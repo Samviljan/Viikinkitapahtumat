@@ -19,7 +19,7 @@ Kattaa kolme kriittistä viime viikkojen muutosta:
 
 ```bash
 cd /app/backend
-TEST_ADMIN_PASSWORD='your-admin-pw' python3 -m pytest tests/test_p1_*.py -v
+TEST_ADMIN_PASSWORD='ViikinkiAdmin2026!' python3 -m pytest tests/test_p1_*.py -v
 ```
 
 Ajaminen kestää ~30–40 sekuntia. Kaikki testit ovat itse-siivoavia: ne luovat

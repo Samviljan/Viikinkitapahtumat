@@ -1,0 +1,188 @@
+name: Backend P1 regression suite
+
+# Runs the pytest P1 regression suite against an ephemeral MongoDB on every
+# push to main and every pull request that touches backend code. Fails the
+# build if any of the 26 P1 tests regress.
+#
+# Required GitHub secrets (Settings → Secrets and variables → Actions):
+#   none mandatory — the workflow uses safe inline dummies for keys it does
+#   not actually call (Resend, Emergent LLM, Expo). Only override if your
+#   own auth flow needs a custom JWT_SECRET in CI.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-tests.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-tests.yml"
+  workflow_dispatch: {}
+
+jobs:
+  p1-suite:
+    name: P1 pytest (26 tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok' || mongo --quiet --eval 'db.runCommand({ ping: 1 }).ok'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # --- DB / app config ---
+      MONGO_URL: mongodb://localhost:27017
+      DB_NAME: viikinki_ci
+      JWT_SECRET: ${{ secrets.CI_JWT_SECRET || 'ci-test-secret-do-not-use-in-prod' }}
+      CORS_ORIGINS: "*"
+      PUBLIC_SITE_URL: http://localhost:8001
+      # --- Admin seed (must match the password the tests use) ---
+      ADMIN_EMAIL: admin@viikinkitapahtumat.fi
+      ADMIN_PASSWORD: CIAdminPass2026!
+      # --- 3rd-party integration keys: dummies are fine, tests don't dial out ---
+      EMERGENT_LLM_KEY: dummy-llm-key
+      RESEND_API_KEY: dummy-resend-key
+      SENDER_EMAIL: noreply@example.com
+      EXPO_ACCESS_TOKEN: ""
+      PROD_SYNC_ENABLED: "false"
+      # --- Test wiring ---
+      REACT_APP_BACKEND_URL: http://localhost:8001
+      TEST_ADMIN_EMAIL: admin@viikinkitapahtumat.fi
+      TEST_ADMIN_PASSWORD: CIAdminPass2026!
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Write backend/.env
+        run: |
+          cat > backend/.env <<EOF
+          MONGO_URL=${MONGO_URL}
+          DB_NAME=${DB_NAME}
+          JWT_SECRET=${JWT_SECRET}
+          CORS_ORIGINS=${CORS_ORIGINS}
+          PUBLIC_SITE_URL=${PUBLIC_SITE_URL}
+          ADMIN_EMAIL=${ADMIN_EMAIL}
+          ADMIN_PASSWORD=${ADMIN_PASSWORD}
+          EMERGENT_LLM_KEY=${EMERGENT_LLM_KEY}
+          RESEND_API_KEY=${RESEND_API_KEY}
+          SENDER_EMAIL=${SENDER_EMAIL}
+          EXPO_ACCESS_TOKEN=${EXPO_ACCESS_TOKEN}
+          PROD_SYNC_ENABLED=${PROD_SYNC_ENABLED}
+          EOF
+
+      - name: Write frontend/.env (for REACT_APP_BACKEND_URL resolution)
+        run: |
+          mkdir -p frontend
+          cat > frontend/.env <<EOF
+          REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL}
+          EOF
+
+      - name: Wait for MongoDB to be ready
+        run: |
+          for i in {1..20}; do
+            if mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok' mongodb://localhost:27017 2>/dev/null; then
+              echo "MongoDB ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "MongoDB never came up" >&2
+          exit 1
+
+      - name: Start backend
+        run: |
+          cd backend
+          # Run uvicorn in background, redirect logs so we can dump them on failure.
+          nohup python -m uvicorn server:app --host 0.0.0.0 --port 8001 \
+            > /tmp/uvicorn.log 2>&1 &
+          echo $! > /tmp/uvicorn.pid
+          # Wait for the API to respond (no /health endpoint, /api/events is public).
+          for i in {1..30}; do
+            if curl -sf http://localhost:8001/api/events >/dev/null 2>&1; then
+              echo "Backend ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Backend failed to start. Last 100 log lines:" >&2
+          tail -n 100 /tmp/uvicorn.log >&2
+          exit 1
+
+      - name: Seed admin user (CI-only password)
+        run: |
+          cd backend
+          python - <<'PYEOF'
+          import asyncio, os, sys
+          sys.path.insert(0, '.')
+
+          async def main():
+              from server import db, hash_password
+              email = os.environ['ADMIN_EMAIL']
+              pw = os.environ['ADMIN_PASSWORD']
+              # Upsert — server already seeds the admin on startup, but we
+              # want to GUARANTEE the password matches TEST_ADMIN_PASSWORD.
+              await db.users.update_one(
+                  {'email': email},
+                  {'$set': {
+                      'email': email,
+                      'role': 'admin',
+                      'nickname': 'CI Admin',
+                      'password_hash': hash_password(pw),
+                      'failed_login_count': 0,
+                      'lockout_until': None,
+                  }, '$setOnInsert': {
+                      'id': 'admin-ci-seed',
+                      'consent_organizer_messages': True,
+                      'consent_merchant_offers': True,
+                  }, '$unset': {
+                      'hashed_password': '',
+                      'failed_login_attempts': '',
+                      'locked_until': '',
+                  }},
+                  upsert=True,
+              )
+              print(f'Admin seeded: {email}')
+
+          asyncio.run(main())
+          PYEOF
+
+      - name: Run P1 regression suite
+        id: pytest
+        run: |
+          cd backend
+          python -m pytest tests/test_p1_*.py -v --color=yes
+
+      - name: Dump backend logs on failure
+        if: failure()
+        run: |
+          echo "=========== uvicorn last 200 lines ==========="
+          tail -n 200 /tmp/uvicorn.log || true
+
+      - name: Stop backend
+        if: always()
+        run: |
+          if [ -f /tmp/uvicorn.pid ]; then
+            kill "$(cat /tmp/uvicorn.pid)" 2>/dev/null || true
+          fi

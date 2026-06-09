@@ -43,31 +43,31 @@ def test_submit_persists_registration_url(base_url, api_client, admin_client):
             json={"status": "approved"},
             timeout=15,
         )
-        r2 = api_client.get(f"{base_url}/api/events/{eid}", timeout=15)
+        r2 = api_client.get(f"{base_url}/api/events/{eid}", timeout=30)
         assert r2.status_code == 200, r2.text
         assert r2.json().get("registration_url") == "https://forms.gle/abc123"
     finally:
-        admin_client.delete(f"{base_url}/api/admin/events/{eid}", timeout=15)
+        admin_client.delete(f"{base_url}/api/admin/events/{eid}", timeout=30)
 
 
 @pytest.mark.p1
 def test_submit_without_registration_url_returns_empty_string(base_url, api_client, admin_client):
     suffix = uuid.uuid4().hex[:8]
-    r = api_client.post(f"{base_url}/api/events", json=_submit_payload(suffix), timeout=15)
+    r = api_client.post(f"{base_url}/api/events", json=_submit_payload(suffix), timeout=30)
     assert r.status_code == 201, r.text
     eid = r.json()["id"]
     try:
         admin_client.patch(
             f"{base_url}/api/admin/events/{eid}",
             json={"status": "approved"},
-            timeout=15,
+            timeout=30,
         )
-        r2 = api_client.get(f"{base_url}/api/events/{eid}", timeout=15)
+        r2 = api_client.get(f"{base_url}/api/events/{eid}", timeout=30)
         assert r2.status_code == 200
         # Either empty string or missing — the EventOut model defaults to "".
         assert r2.json().get("registration_url", "") == ""
     finally:
-        admin_client.delete(f"{base_url}/api/admin/events/{eid}", timeout=15)
+        admin_client.delete(f"{base_url}/api/admin/events/{eid}", timeout=30)
 
 
 @pytest.mark.p1

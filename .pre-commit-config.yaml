@@ -1,0 +1,44 @@
+# Lightweight pre-commit hook config for the Viikinkitapahtumat repo.
+#
+# Install once:
+#   pip install pre-commit
+#   pre-commit install
+#
+# After that, every `git commit` runs the hooks below on the staged files.
+# To run them manually against all files: `pre-commit run --all-files`.
+
+repos:
+  # --- Generic file hygiene ---
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^(mobile/dist/|frontend/node_modules/|.*\.lock$)
+      - id: end-of-file-fixer
+        exclude: ^(mobile/dist/|frontend/node_modules/|.*\.lock$)
+      - id: check-yaml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=2000"]
+
+  # --- Python: run the P1 regression suite on backend changes ---
+  #
+  # This hook only runs when files inside backend/ are staged, so day-to-day
+  # frontend commits stay fast. It uses the locally-installed pytest so it
+  # mirrors what CI runs.
+  #
+  # Prerequisites the developer needs once:
+  #   - MongoDB reachable on $MONGO_URL (defaults to localhost:27017)
+  #   - export TEST_ADMIN_PASSWORD=<your-admin-pw>
+  #
+  # If those aren't set the hook fails fast with an actionable message
+  # instead of silently passing.
+  - repo: local
+    hooks:
+      - id: backend-p1-suite
+        name: Backend P1 regression suite (pytest)
+        entry: bash -c 'cd backend && TEST_ADMIN_PASSWORD="${TEST_ADMIN_PASSWORD:?Set TEST_ADMIN_PASSWORD to run hook}" python -m pytest tests/test_p1_*.py -q'
+        language: system
+        files: ^backend/
+        pass_filenames: false
+        stages: [pre-commit]

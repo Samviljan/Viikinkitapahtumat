@@ -39,6 +39,32 @@ Modernise https://viikinkitapahtumat.fi with: visually better calendar/event lis
 - ✅ Localised admin toast/confirm messages.
 - ✅ 28/28 backend tests + frontend e2e all green.
 
+## ✅ Toteutettu 2026-02-01 — CI workflow + pre-commit hook
+Liittää P1-regressiosuiten automaattiseen ajoon push-/PR-tilanteissa ja paikallisiin commit-hetkiin.
+
+**Tiedostot:**
+- `/app/.github/workflows/backend-tests.yml` — GitHub Actions
+- `/app/.pre-commit-config.yaml` — paikallinen git-hook
+- `/app/.github/README.md` — dokumentaatio kummastakin
+
+**Workflow ajaa**:
+1. Käynnistää MongoDB 7 service-containerin
+2. Python 3.11 + pip-cache + `backend/requirements.txt`-asennus
+3. Kirjoittaa testiin sopivat `.env`-tiedostot
+4. Käynnistää `uvicorn server:app --port 8001` taustalle, odottaa että `/api/events` vastaa
+5. Seediroi admin-käyttäjän bcrypt-hashilla (CI-only-salasana)
+6. `pytest tests/test_p1_*.py -v`
+7. Dumppaa uvicorn-lokin jos fail
+8. Sammuttaa backendin
+
+**Triggerit**: push main:iin, PR (kun `backend/**` muuttuu), manuaalinen `workflow_dispatch`.
+
+**Pre-commit-hook**: ajaa P1-suiten kun staged tiedostot koskevat `backend/`-kansiota. Vaatii paikallisesti `TEST_ADMIN_PASSWORD` ja MongoDB-yhteyden.
+
+**Tärkeä muistio admin-salasanasta**: Backend palauttaa joka käynnistyksellä admin-tilin salasanan ENV-muuttujan `ADMIN_PASSWORD` arvoon (`ViikinkiAdmin2026!` `.env`:in mukaan). Aja siis suite tällä arvolla, älä yritä asettaa muuta salasanaa ilman ENV:n päivitystä samanaikaisesti. Päivitetty myös `test_credentials.md` heijastamaan tätä.
+
+
+
 ## ✅ Toteutettu 2026-02-01 — P1 Backend pytest-regressiosuite (26/26 läpi)
 Aikaa kului ~1.5 tuntia (alle alkuperäisen 3,5–4,5 h ennusteen). Suite ajetaan ~30–48 sekunnissa.
 
