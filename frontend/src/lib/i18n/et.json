@@ -63,7 +63,8 @@
     "open_in_maps": "Ava kaardil",
     "open_website": "Ava veebisait",
     "merchants_present": "Kauplejad kohal",
-    "merchants_present_help": "Need kauplejad on teatanud, et osalevad sellel sündmusel."
+    "merchants_present_help": "Need kauplejad on teatanud, et osalevad sellel sündmusel.",
+    "registration_form": "Registreerimisvorm"
   },
   "submit": {
     "title": "Teatage üritusest",
@@ -101,7 +102,8 @@
     "submit_btn": "Saada ülevaatamiseks",
     "success": "Tänan! Teie üritust kontrollitakse.",
     "error": "Saatmine ebaõnnestus",
-    "autotranslate_hint": "Kirjuta pealkiri ja kirjeldus oma keeles — tõlgime need automaatselt kõikidesse toetatud keeltesse."
+    "autotranslate_hint": "Kirjuta pealkiri ja kirjeldus oma keeles — tõlgime need automaatselt kõikidesse toetatud keeltesse.",
+    "registration_url": "Registreerimisvormi URL (valikuline)"
   },
   "countries": {
     "FI": "Soome",

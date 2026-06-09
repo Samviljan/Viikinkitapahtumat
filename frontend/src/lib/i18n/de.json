@@ -62,7 +62,8 @@
     "open_in_maps": "In Karten öffnen",
     "open_website": "Webseite öffnen",
     "merchants_present": "Händler vor Ort",
-    "merchants_present_help": "Diese Händler haben angekündigt, an dieser Veranstaltung teilzunehmen."
+    "merchants_present_help": "Diese Händler haben angekündigt, an dieser Veranstaltung teilzunehmen.",
+    "registration_form": "Anmeldeformular"
   },
   "submit": {
     "title": "Ein Event einreichen",
@@ -100,7 +101,8 @@
     "fight_none": "Nicht ausgewählt",
     "submit_btn": "Zur Überprüfung einreichen",
     "success": "Danke! Dein Event wurde zur Überprüfung eingereicht.",
-    "error": "Einreichung fehlgeschlagen"
+    "error": "Einreichung fehlgeschlagen",
+    "registration_url": "URL des Anmeldeformulars (optional)"
   },
   "countries": {
     "FI": "Finnland",

@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Calendar, MapPin, ArrowUpRight, Hourglass, Clock, FileText } from "lucide-react";
+import { Calendar, MapPin, ArrowUpRight, Hourglass, Clock, FileText, ClipboardList } from "lucide-react";
 import { useI18n, pickLocalized } from "@/lib/i18n";
 import RemindMeButton from "@/components/RemindMeButton";
 import { flagFor } from "@/lib/countries";
@@ -136,6 +136,18 @@ export default function EventCard({ event, compact = false }) {
               className="inline-flex items-center gap-1.5 text-xs font-rune tracking-[0.15em] uppercase text-viking-gold hover:text-viking-bone underline-offset-4 hover:underline"
             >
               <FileText size={12} /> {t("events.program_pdf")}
+            </a>
+          )}
+          {event.registration_url && (
+            <a
+              data-testid={`event-registration-link-${event.id}`}
+              href={event.registration_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1.5 text-xs font-rune tracking-[0.15em] uppercase text-viking-ember hover:text-viking-bone underline-offset-4 hover:underline"
+            >
+              <ClipboardList size={12} /> {t("events.registration_form")}
             </a>
           )}
           <div className="flex items-center gap-2 text-xs font-rune text-viking-ember opacity-0 group-hover:opacity-100 transition-opacity ml-auto">

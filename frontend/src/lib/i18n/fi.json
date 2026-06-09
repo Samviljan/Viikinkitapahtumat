@@ -68,7 +68,8 @@
     "open_in_maps": "Avaa kartalla",
     "open_website": "Avaa verkkosivu",
     "merchants_present": "Kauppiaita paikalla",
-    "merchants_present_help": "Nämä kauppiaat ovat ilmoittaneet osallistuvansa tähän tapahtumaan."
+    "merchants_present_help": "Nämä kauppiaat ovat ilmoittaneet osallistuvansa tähän tapahtumaan.",
+    "registration_form": "Ilmoittautumislomake"
   },
   "submit": {
     "title": "Ilmoita tapahtuma",
@@ -106,7 +107,8 @@
     "fight_none": "Ei valittu",
     "submit_btn": "Lähetä tarkastettavaksi",
     "success": "Kiitos! Tapahtumasi on lähetetty hyväksyttäväksi.",
-    "error": "Lähettäminen epäonnistui"
+    "error": "Lähettäminen epäonnistui",
+    "registration_url": "Ilmoittautumislomakkeen URL (valinnainen)"
   },
   "countries": {
     "FI": "Suomi",

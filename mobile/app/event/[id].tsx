@@ -71,6 +71,10 @@ export default function EventDetail() {
     if (ev.link) Linking.openURL(ev.link).catch(() => {});
   }
 
+  function openRegistration() {
+    if (ev.registration_url) Linking.openURL(ev.registration_url).catch(() => {});
+  }
+
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
       {img ? (
@@ -148,6 +152,18 @@ export default function EventDetail() {
               <Ionicons name="open-outline" size={16} color={colors.bone} />
               <Text style={[styles.actionText, { color: colors.bone }]}>
                 {t("info.open_web")}
+              </Text>
+            </Pressable>
+          ) : null}
+          {ev.registration_url ? (
+            <Pressable
+              testID="action-registration"
+              style={styles.actionBtnGold}
+              onPress={openRegistration}
+            >
+              <Ionicons name="clipboard-outline" size={16} color={colors.bg} />
+              <Text style={[styles.actionText, { color: colors.bg, fontWeight: "700" }]}>
+                {t("event.registration_form")}
               </Text>
             </Pressable>
           ) : null}
@@ -272,6 +288,20 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: radius.sm,
     backgroundColor: colors.ember,
+  },
+  actionBtnGold: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: radius.sm,
+    backgroundColor: colors.gold,
+    shadowColor: colors.gold,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 3,
   },
   actionText: { color: colors.bone, fontSize: 12, fontWeight: "600", letterSpacing: 0.5 },
   description: {

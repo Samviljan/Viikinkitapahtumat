@@ -67,7 +67,8 @@
     "open_in_maps": "Öppna i Kartor",
     "open_website": "Öppna webbplats",
     "merchants_present": "Handlare på plats",
-    "merchants_present_help": "Dessa handlare har anmält att de deltar i evenemanget."
+    "merchants_present_help": "Dessa handlare har anmält att de deltar i evenemanget.",
+    "registration_form": "Anmälningsformulär"
   },
   "submit": {
     "title": "Anmäl evenemang",
@@ -105,7 +106,8 @@
     "fight_none": "Ej valt",
     "submit_btn": "Skicka för granskning",
     "success": "Tack! Ditt evenemang har skickats för granskning.",
-    "error": "Det gick inte att skicka"
+    "error": "Det gick inte att skicka",
+    "registration_url": "URL till anmälningsformulär (valfritt)"
   },
   "countries": {
     "FI": "Finland",

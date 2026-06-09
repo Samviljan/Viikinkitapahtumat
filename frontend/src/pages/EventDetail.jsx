@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useI18n, pickLocalized } from "@/lib/i18n";
 import { useDocumentSeo } from "@/lib/seo";
-import { Calendar, MapPin, User, Mail, Globe, ChevronLeft, Hourglass, Clock, FileText, Map } from "lucide-react";
+import { Calendar, MapPin, User, Mail, Globe, ChevronLeft, Hourglass, Clock, FileText, Map, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatDateRange, computeEventTiming } from "@/components/EventCard";
 import RemindMeButton from "@/components/RemindMeButton";
@@ -163,7 +163,7 @@ export default function EventDetail() {
               link uses Google Maps' query API which works on every platform
               (desktop browsers, iOS, Android) and falls back to the user's
               default map app when set. */}
-          {(event.location || event.link) && (
+          {(event.location || event.link || event.registration_url) && (
             <div className="flex flex-wrap gap-3 mb-8" data-testid="event-detail-actions">
               {event.location && (
                 <a
@@ -187,6 +187,18 @@ export default function EventDetail() {
                 >
                   <Globe size={14} />
                   {t("events.open_website") || "Avaa verkkosivu"}
+                </a>
+              )}
+              {event.registration_url && (
+                <a
+                  href={event.registration_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="event-open-registration"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-sm bg-viking-gold text-viking-black hover:bg-viking-gold/90 transition-colors font-rune text-[11px] tracking-[0.15em] uppercase ember-glow font-semibold"
+                >
+                  <ClipboardList size={14} />
+                  {t("events.registration_form")}
                 </a>
               )}
             </div>

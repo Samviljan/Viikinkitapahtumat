@@ -26,6 +26,7 @@ export interface VikingEvent {
   organizer: string;
   organizer_email?: string | null;
   link: string;
+  registration_url?: string;
   image_url: string;
   gallery?: string[];
   status: "approved" | "pending" | "rejected";

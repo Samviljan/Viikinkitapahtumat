@@ -67,7 +67,8 @@
     "open_in_maps": "Open in Maps",
     "open_website": "Open website",
     "merchants_present": "Merchants present",
-    "merchants_present_help": "These merchants have indicated they will attend this event."
+    "merchants_present_help": "These merchants have indicated they will attend this event.",
+    "registration_form": "Registration form"
   },
   "submit": {
     "title": "Submit an event",
@@ -105,7 +106,8 @@
     "fight_none": "Not selected",
     "submit_btn": "Send for review",
     "success": "Thank you! Your event was submitted for review.",
-    "error": "Submission failed"
+    "error": "Submission failed",
+    "registration_url": "Registration form URL (optional)"
   },
   "countries": {
     "FI": "Finland",

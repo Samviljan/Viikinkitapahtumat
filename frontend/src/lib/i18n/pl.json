@@ -63,7 +63,8 @@
     "open_in_maps": "Otwórz w Mapach",
     "open_website": "Otwórz stronę",
     "merchants_present": "Kupcy na miejscu",
-    "merchants_present_help": "Ci kupcy zadeklarowali udział w tym wydarzeniu."
+    "merchants_present_help": "Ci kupcy zadeklarowali udział w tym wydarzeniu.",
+    "registration_form": "Formularz rejestracyjny"
   },
   "submit": {
     "title": "Zgłoś wydarzenie",
@@ -101,7 +102,8 @@
     "submit_btn": "Wyślij do zatwierdzenia",
     "success": "Dziękuję! Twoje wydarzenie zostało wysłane do zatwierdzenia.",
     "error": "Wysłanie nie powiodło się",
-    "autotranslate_hint": "Wpisz tytuł i opis w swoim języku — automatycznie przetłumaczymy je na wszystkie obsługiwane języki."
+    "autotranslate_hint": "Wpisz tytuł i opis w swoim języku — automatycznie przetłumaczymy je na wszystkie obsługiwane języki.",
+    "registration_url": "URL formularza rejestracyjnego (opcjonalnie)"
   },
   "countries": {
     "FI": "Finlandia",

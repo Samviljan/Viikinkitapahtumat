@@ -62,7 +62,8 @@
     "open_in_maps": "Åbn i Kort",
     "open_website": "Åbn websted",
     "merchants_present": "Handlere på stedet",
-    "merchants_present_help": "Disse handlere har tilkendegivet, at de deltager i arrangementet."
+    "merchants_present_help": "Disse handlere har tilkendegivet, at de deltager i arrangementet.",
+    "registration_form": "Tilmeldingsformular"
   },
   "submit": {
     "title": "Indsend et arrangement",
@@ -100,7 +101,8 @@
     "fight_none": "Ikke valgt",
     "submit_btn": "Send til gennemgang",
     "success": "Tak! Dit arrangement blev indsendt til gennemgang.",
-    "error": "Indsendelsen mislykkedes"
+    "error": "Indsendelsen mislykkedes",
+    "registration_url": "URL til tilmeldingsformular (valgfri)"
   },
   "countries": {
     "FI": "Finland",

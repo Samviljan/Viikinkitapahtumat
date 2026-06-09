@@ -53,7 +53,7 @@ interface Dict {
     meetup: string;
     other: string;
   };
-  event: { back: string; favorite: string; unfavorite: string; share: string; open_in_maps: string };
+  event: { back: string; favorite: string; unfavorite: string; share: string; open_in_maps: string; registration_form: string };
   favorites: { title: string; empty: string; browse: string };
   myevents: {
     eyebrow: string;
@@ -319,6 +319,7 @@ const baseTranslations: Partial<Record<Lang, Dict>> = {
       unfavorite: "Poista suosikeista",
       share: "Jaa",
       open_in_maps: "Avaa kartalla",
+      registration_form: "Ilmoittautumislomake",
     },
     favorites: {
       title: "Suosikit",
@@ -595,7 +596,7 @@ const baseTranslations: Partial<Record<Lang, Dict>> = {
       meetup: "Meetup",
       other: "Other",
     },
-    event: { back: "Back", favorite: "Add to favorites", unfavorite: "Remove from favorites", share: "Share", open_in_maps: "Open in Maps" },
+    event: { back: "Back", favorite: "Add to favorites", unfavorite: "Remove from favorites", share: "Share", open_in_maps: "Open in Maps", registration_form: "Registration form" },
     favorites: {
       title: "Favorites",
       empty: "You haven't favorited any events yet.",
@@ -870,7 +871,7 @@ const baseTranslations: Partial<Record<Lang, Dict>> = {
       meetup: "Träff",
       other: "Övrigt",
     },
-    event: { back: "Tillbaka", favorite: "Lägg till favorit", unfavorite: "Ta bort favorit", share: "Dela", open_in_maps: "Öppna i Kartor" },
+    event: { back: "Tillbaka", favorite: "Lägg till favorit", unfavorite: "Ta bort favorit", share: "Dela", open_in_maps: "Öppna i Kartor", registration_form: "Anmälningsformulär" },
     favorites: {
       title: "Favoriter",
       empty: "Du har inte sparat några favoriter ännu.",

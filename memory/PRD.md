@@ -39,6 +39,22 @@ Modernise https://viikinkitapahtumat.fi with: visually better calendar/event lis
 - ✅ Localised admin toast/confirm messages.
 - ✅ 28/28 backend tests + frontend e2e all green.
 
+## ✅ Toteutettu 2026-02-01 — Tapahtuman ilmoittautumislomake-linkki
+- **Backend** (`/app/backend/server.py`): lisätty `registration_url: Optional[str] = ""` malleihin `EventCreate`, `EventOut`, `EventEdit`.
+- **Web Submit-lomake** (`/app/frontend/src/pages/Submit.jsx`): uusi input-kenttä "Ilmoittautumislomakkeen URL" `Lisätietolinkki`-kentän alapuolelle.
+- **Web admin-edit** (`/app/frontend/src/components/AdminEventEditDialog.jsx`): sama kenttä admin-dialogiin.
+- **Web EventDetail** (`/app/frontend/src/pages/EventDetail.jsx`): uusi kultainen "ILMOITTAUTUMISLOMAKE"-painike action-row:ssa "Avaa kartalla" + "Avaa verkkosivu" -painikkeiden viereen (ClipboardList-ikoni, ember-glow).
+- **Web EventCard** (`/app/frontend/src/components/EventCard.jsx`): pieni "ILMOITTAUTUMISLOMAKE"-tekstilinkki ohjelma-PDF:n viereen ember-värillä, näkyy vain jos `registration_url` on asetettu.
+- **Mobile** (`/app/mobile/app/event/[id].tsx`): uusi `actionBtnGold`-tyylinen painike "Ilmoittautumislomake" (clipboard-outline-ikoni). Lisätty myös `registration_url?` TypeScript-tyyppiin (`/app/mobile/src/types.ts`).
+- **i18n**: uudet avaimet `events.registration_form` ja `submit.registration_url` kaikkiin 7 kieleen (FI/EN/SV/DA/DE/ET/PL) sekä mobiilin `translations.ts`-tiedostoon (FI/EN/SV; muut kielet perivät EN:n).
+- **Verifiointi:** Testattu päivittämällä tulevan tapahtuman `registration_url` ja ottamalla screenshot:
+  - Tapahtumasivulla painike näkyy kultaisena "ILMOITTAUTUMISLOMAKE" ja ohjaa oikeaan URL:iin.
+  - Listausnäkymässä tapahtumakortilla näkyy pieni ember-värinen "ILMOITTAUTUMISLOMAKE"-tekstilinkki.
+  - Submit-lomakkeessa kenttä "ILMOITTAUTUMISLOMAKKEEN URL (VALINNAINEN)" renderöityy oikein.
+  - Backend palauttaa `registration_url`-kentän `GET /api/events/{id}`-vastauksessa.
+
+
+
 ## ✅ Bugikorjaus 2026-02-01 — RSVP-muistutukset toistuvat joka päivä
 - **Ongelma:** Käyttäjä raportoi että ilmoittautumiseen liitetyt tapahtumamuistutukset saapuivat **joka päivä** ennen tapahtumaa. Bugi `_run_daily_event_reminders`-funktiossa (`/app/backend/server.py:2701`): ikkuna `[today, today+window_days=3]` matchasi tapahtumat 3 päivän aikana ennen alkua, ja dedup oli per-päivä → muistutus lähti T-3, T-2, T-1 ja T-0 päivinä.
 - **Korjaus:**

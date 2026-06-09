@@ -53,6 +53,7 @@ export default function AdminEventEditDialog({ event, open, onOpenChange, onSave
         organizer: event.organizer || "",
         organizer_email: event.organizer_email || "",
         link: event.link || "",
+        registration_url: event.registration_url || "",
         image_url: event.image_url || "",
         gallery: Array.isArray(event.gallery) ? event.gallery : [],
         audience: event.audience || "",
@@ -213,6 +214,9 @@ export default function AdminEventEditDialog({ event, open, onOpenChange, onSave
 
           <Field label={t("submit.link")}>
             <Input data-testid="edit-link" value={form.link} onChange={update("link")} className={fieldClass} placeholder="https://" />
+          </Field>
+          <Field label={t("submit.registration_url")}>
+            <Input data-testid="edit-registration-url" value={form.registration_url} onChange={update("registration_url")} className={fieldClass} placeholder="https://" />
           </Field>
           <Field label={t("submit.image")}>
             <ImageUploadField

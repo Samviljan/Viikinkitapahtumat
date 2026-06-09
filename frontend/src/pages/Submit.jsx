@@ -43,6 +43,7 @@ export default function Submit() {
     organizer: "",
     organizer_email: "",
     link: "",
+    registration_url: "",
     image_url: "",
     audience: "",
     fight_style: "",
@@ -221,6 +222,16 @@ export default function Submit() {
               data-testid="field-link"
               value={form.link}
               onChange={update("link")}
+              placeholder="https://"
+              className={fieldClass}
+            />
+          </Field>
+
+          <Field label={t("submit.registration_url")}>
+            <Input
+              data-testid="field-registration-url"
+              value={form.registration_url}
+              onChange={update("registration_url")}
               placeholder="https://"
               className={fieldClass}
             />

@@ -417,6 +417,7 @@ class EventCreate(BaseModel):
     organizer: str
     organizer_email: Optional[EmailStr] = None
     link: Optional[str] = ""
+    registration_url: Optional[str] = ""
     image_url: Optional[str] = ""
     gallery: List[str] = []
     audience: Optional[str] = ""
@@ -457,6 +458,7 @@ class EventOut(BaseModel):
     organizer: str
     organizer_email: Optional[str] = None
     link: str
+    registration_url: Optional[str] = ""
     image_url: str
     gallery: List[str] = []
     status: str
@@ -487,6 +489,7 @@ class EventEdit(BaseModel):
     organizer: str
     organizer_email: Optional[EmailStr] = None
     link: Optional[str] = ""
+    registration_url: Optional[str] = ""
     image_url: Optional[str] = ""
     gallery: List[str] = []
     audience: Optional[str] = ""
