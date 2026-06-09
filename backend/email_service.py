@@ -37,9 +37,29 @@ def _admin_email() -> str:
     return os.environ.get("ADMIN_EMAIL", "admin@viikinkitapahtumat.fi")
 
 
+def mask_email(addr: str) -> str:
+    """Return ``user@example.com`` as ``***@example.com`` for safe logging.
+
+    Logging the full recipient address counts as clear-text PII per CodeQL
+    `py/clear-text-logging-sensitive-data`. We log only the domain so log
+    consumers can still triage delivery problems by domain without exposing
+    individual addresses.
+    """
+    if not addr or "@" not in addr:
+        return "***"
+    return "***@" + addr.rsplit("@", 1)[1]
+
+
+# Backwards-compatible private alias kept for any internal callers.
+_mask_email = mask_email
+
+
 async def send_email(to: str, subject: str, html: str) -> dict:
     if not _is_configured():
-        logger.warning("[email mock] to=%s subject=%s (RESEND_API_KEY not set)", to, subject)
+        logger.warning(
+            "[email mock] to_domain=%s (RESEND_API_KEY not set)",
+            _mask_email(to),
+        )
         return {"sent": False, "reason": "no_api_key"}
 
     api_key = os.environ["RESEND_API_KEY"]
@@ -55,7 +75,7 @@ async def send_email(to: str, subject: str, html: str) -> dict:
         email_id = result.get("id") if isinstance(result, dict) else getattr(result, "id", None)
         return {"sent": True, "id": email_id}
     except Exception as e:  # noqa: BLE001
-        logger.error("Resend send failed to=%s: %s", to, e)
+        logger.error("Resend send failed to_domain=%s: %s", _mask_email(to), e)
         return {"sent": False, "reason": str(e)}
 
 
@@ -428,7 +448,7 @@ async def notify_submitter_decision(ev: dict, approved: bool) -> dict:
         ev.get("id"),
         approved,
         _email_lang_for(ev) if approved else "fi",
-        to,
+        mask_email(to),
         result.get("sent"),
     )
     return result

@@ -7,6 +7,7 @@ load_dotenv(ROOT_DIR / '.env')
 import os
 import base64
 import io
+import re
 import asyncio
 import hashlib
 import logging
@@ -39,6 +40,7 @@ from email_service import (
     send_event_reminders as svc_send_event_reminders,
     send_password_reset as svc_send_password_reset,
     make_unsubscribe_token,
+    mask_email,
 )
 from push_service import send_to_users as push_send_to_users
 from translation_service import fill_missing_translations, sweep_missing_translations
@@ -1150,7 +1152,7 @@ async def admin_reset_user_password(
             "$unset": {"password_reset_token": "", "password_reset_expires": ""},
         },
     )
-    logger.info("Admin reset password for user %s (%s)", user_id, target.get("email"))
+    logger.info("Admin reset password for user %s (%s)", user_id, mask_email(target.get("email")))
     return {"ok": True, "email": target.get("email")}
 
 
@@ -1199,7 +1201,7 @@ async def admin_trigger_password_reset(
     # Same delivery guarantee as /auth/forgot-password: only to the stored
     # user email, never to an admin-controlled address.
     background.add_task(svc_send_password_reset, dest, token)
-    logger.info("Admin triggered password-reset email for user %s (%s)", user_id, dest)
+    logger.info("Admin triggered password-reset email for user %s (%s)", user_id, mask_email(dest))
     return {"ok": True, "email": dest}
 
 
@@ -1951,7 +1953,7 @@ async def send_message_to_attendees(
                 await svc_send_email(em, rec_subject, html)
                 sent_email += 1
             except Exception:
-                logger.exception("Failed sending merchant/organizer email to %s", em)
+                logger.exception("Failed sending merchant/organizer email to %s", mask_email(em))
 
     return_payload = {
         "sent_push": sent_push,
@@ -2948,7 +2950,7 @@ async def _run_daily_event_reminders(days_before: int = 7) -> dict:
                         await svc_send_email(u["email"], f"Muistutus: {ev_title}", html)
                         sent_em += 1
                     except Exception:
-                        logger.exception("Failed reminder email to %s", u.get("email"))
+                        logger.exception("Failed reminder email to %s", mask_email(u.get("email")))
                 summary["email_sent"] += sent_em
                 await db.reminder_log.insert_one(
                     {
@@ -3141,7 +3143,7 @@ async def admin_send_newsletter_announcement(payload: NewsletterAnnouncementRequ
             await svc_send_email(em, subject, html)
             sent += 1
         except Exception:
-            logger.exception("Failed sending newsletter announcement to %s", em)
+            logger.exception("Failed sending newsletter announcement to %s", mask_email(em))
             skipped += 1
 
     # Audit row — re-uses the message_log shape so it shows up in the same
@@ -5867,7 +5869,7 @@ async def on_startup():
                 "role": "admin",
                 "created_at": datetime.now(timezone.utc).isoformat(),
             })
-            logger.info("Admin user seeded: %s", admin_email)
+            logger.info("Admin user seeded: %s", mask_email(admin_email))
         elif not verify_password(admin_password, existing["password_hash"]):
             await db.users.update_one(
                 {"email": admin_email},
@@ -6084,22 +6086,42 @@ if _MOBILE_DIST.exists() and (_MOBILE_DIST / "index.html").exists():
 
     # SPA fallback: index.html for the root and any client-side route. Static assets
     # under /api/mobile-app/_expo/* and /api/mobile-app/assets/* are handled separately.
+    # Whitelist of characters allowed in any individual path segment served
+    # by the SPA fallback. Anything outside this set (slashes, backslashes,
+    # NUL, .., absolute paths, drive specifiers, …) is rejected before we
+    # touch the file system. This satisfies CodeQL py/path-injection by
+    # validating user-controlled input against an allowlist UP FRONT, not
+    # only via a containment check after Path() construction.
+    _SPA_SAFE_SEGMENT = re.compile(r"^[A-Za-z0-9._-]+$")
+    _MOBILE_DIST_REAL = _MOBILE_DIST.resolve()
+
     @app.get("/api/mobile-app", include_in_schema=False)
     @app.get("/api/mobile-app/", include_in_schema=False)
     @app.get("/api/mobile-app/{full_path:path}", include_in_schema=False)
     async def _mobile_app_spa(full_path: str = ""):
-        # Real file on disk? Serve it.
+        # Default response: SPA index.html for any unknown / client-routed path.
         if full_path:
-            candidate = (_MOBILE_DIST / full_path).resolve()
-            try:
-                candidate.relative_to(_MOBILE_DIST.resolve())
-            except ValueError:
-                # Path traversal attempt — fall through to index.html
-                candidate = None
-            if candidate and candidate.is_file():
-                return FileResponse(candidate)
-        # Otherwise serve index.html for SPA client-side routing.
-        return FileResponse(_MOBILE_DIST / "index.html")
+            segments = full_path.split("/")
+            # Reject if ANY segment is empty, equal to ".." or contains a
+            # character outside the safe allowlist. This prevents path
+            # traversal (../), absolute paths (/x), drive escapes (C:\x)
+            # and NUL injection in a single guard.
+            if all(
+                seg and seg != ".." and _SPA_SAFE_SEGMENT.match(seg)
+                for seg in segments
+            ):
+                candidate = _MOBILE_DIST_REAL.joinpath(*segments).resolve()
+                # Belt-and-suspenders: even with the allowlist above, double
+                # check that the resolved path is still contained inside the
+                # mobile-app dist directory (symlink defence).
+                try:
+                    candidate.relative_to(_MOBILE_DIST_REAL)
+                except ValueError:
+                    candidate = None
+                if candidate and candidate.is_file():
+                    return FileResponse(candidate)
+        # Fall through to SPA index.html for client-side routing.
+        return FileResponse(_MOBILE_DIST_REAL / "index.html")
 
 # CORS: when credentials are required (cookies), browsers reject `Access-Control-Allow-Origin: *`.
 # Therefore we configure the middleware to echo the request origin via allow_origin_regex

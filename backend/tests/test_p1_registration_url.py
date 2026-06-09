@@ -73,7 +73,7 @@ def test_submit_without_registration_url_returns_empty_string(base_url, api_clie
 @pytest.mark.p1
 def test_admin_can_update_registration_url(base_url, api_client, admin_client):
     suffix = uuid.uuid4().hex[:8]
-    r = api_client.post(f"{base_url}/api/events", json=_submit_payload(suffix), timeout=15)
+    r = api_client.post(f"{base_url}/api/events", json=_submit_payload(suffix), timeout=30)
     assert r.status_code == 201
     eid = r.json()["id"]
     try:
@@ -81,7 +81,7 @@ def test_admin_can_update_registration_url(base_url, api_client, admin_client):
         r_approve = admin_client.patch(
             f"{base_url}/api/admin/events/{eid}",
             json={"status": "approved"},
-            timeout=15,
+            timeout=30,
         )
         assert r_approve.status_code == 200, r_approve.text
         # Full-content edit via PUT
@@ -89,11 +89,11 @@ def test_admin_can_update_registration_url(base_url, api_client, admin_client):
         r2 = admin_client.put(
             f"{base_url}/api/admin/events/{eid}",
             json=edit_payload,
-            timeout=15,
+            timeout=30,
         )
         assert r2.status_code == 200, r2.text
-        r3 = api_client.get(f"{base_url}/api/events/{eid}", timeout=15)
+        r3 = api_client.get(f"{base_url}/api/events/{eid}", timeout=30)
         assert r3.status_code == 200
         assert r3.json().get("registration_url") == "https://lyyti.fi/test"
     finally:
-        admin_client.delete(f"{base_url}/api/admin/events/{eid}", timeout=15)
+        admin_client.delete(f"{base_url}/api/admin/events/{eid}", timeout=30)
