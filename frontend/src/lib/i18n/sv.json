@@ -321,7 +321,35 @@
       "run_btn": "Kör översättningssvep nu",
       "show_gaps": "Visa saknade översättningar"
     },
-    "refresh": "Uppdatera"
+    "refresh": "Uppdatera",
+    "templates": {
+      "title": "Meddelandemallar",
+      "help": "Hantera återanvändbara meddelandemallar. Mallar visas i Mallar-fliken för alla avsändare.",
+      "new": "+ Ny mall",
+      "empty": "Inga mallar ännu. Klicka Ny mall för att skapa den första.",
+      "name": "Mallens namn",
+      "subject": "Ämne",
+      "body": "Meddelandetext",
+      "icon": "Ikon (lucide-react)",
+      "color": "Accentfärg",
+      "vars_help": "Tillgängliga variabler: {{event_title}}, {{event_date}}, {{event_location}}, {{organizer_name}}, {{event_url}}, {{registration_url}}, {{nickname}}",
+      "save": "Spara",
+      "cancel": "Avbryt",
+      "delete": "Radera",
+      "confirm_delete": "Radera mall \"{name}\"?",
+      "edit": "Redigera"
+    },
+    "announcement": {
+      "title": "Nyhetsbrevsannonsering",
+      "help": "Skicka ett separat meddelande till nyhetsbrevsprenumeranter om app- eller webbplatsuppdateringar.",
+      "subject": "Ämne",
+      "body": "Meddelande",
+      "cta_label": "Knapptext (valfri)",
+      "cta_url": "Knappens URL (valfri)",
+      "send": "Skicka till prenumeranter",
+      "confirm": "Skicka denna annonsering till ALLA aktiva prenumeranter?",
+      "success": "Skickat till {sent}/{recipients} prenumeranter."
+    }
   },
   "account": {
     "sign_in": "Logga in",
@@ -663,7 +691,12 @@
     "targets": "Målgrupp",
     "targets_help_all": "Tomt = meddelandet skickas till alla samtyckande deltagare.",
     "targets_help_some": "Meddelandet begränsas till deltagare i de valda kategorierna.",
-    "no_push_tokens": "Push-mottagare: 0. Ingen av deltagarna har aktiverat push-notiser i mobilappen ännu. E-post fungerar fortfarande om du valt \"E-post\" eller \"Push + E-post\"."
+    "no_push_tokens": "Push-mottagare: 0. Ingen av deltagarna har aktiverat push-notiser i mobilappen ännu. E-post fungerar fortfarande om du valt \"E-post\" eller \"Push + E-post\".",
+    "templates_tab": "Mallar",
+    "templates_load": "Använd den här mallen",
+    "templates_save_as": "Spara nuvarande som mall",
+    "templates_empty": "Inga mallar tillgängliga.",
+    "vars_hint": "Tillgängliga: {{event_title}}, {{event_date}}, {{event_location}}, {{organizer_name}}, {{event_url}}, {{registration_url}}, {{nickname}}"
   },
   "messages": {
     "feature": "Meddelanden",

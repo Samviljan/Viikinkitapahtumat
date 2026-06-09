@@ -10,6 +10,7 @@ import { useI18n } from "@/lib/i18n";
 import AdminStatsPanel from "@/components/admin/AdminStatsPanel";
 import AdminPushHealthCard from "@/components/admin/AdminPushHealthCard";
 import AdminMessagingQuotaPanel from "@/components/admin/AdminMessagingQuotaPanel";
+import EmailTemplatesPanel from "@/components/admin/EmailTemplatesPanel";
 
 export default function AdminMessages() {
   const { t } = useI18n();
@@ -38,6 +39,8 @@ export default function AdminMessages() {
           className="text-viking-stone group-hover:text-viking-gold shrink-0 transition-colors"
         />
       </Link>
+
+      <EmailTemplatesPanel />
 
       <AdminStatsPanel />
     </div>

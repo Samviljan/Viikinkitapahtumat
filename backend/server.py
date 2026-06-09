@@ -555,6 +555,46 @@ class ReminderRequest(BaseModel):
 
 
 # -----------------------------------------------------------------------------
+# Email templates (admin-managed, used by site-wide compose AND merchants/orgs)
+# -----------------------------------------------------------------------------
+class EmailTemplateCreate(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    name: str
+    subject: str
+    body: str
+    icon: Optional[str] = "Mail"  # lucide icon name (free string, frontend maps)
+    color: Optional[str] = "#C8492C"  # hex accent color, defaults to ember
+
+
+class EmailTemplateUpdate(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    name: Optional[str] = None
+    subject: Optional[str] = None
+    body: Optional[str] = None
+    icon: Optional[str] = None
+    color: Optional[str] = None
+
+
+class EmailTemplateOut(BaseModel):
+    id: str
+    name: str
+    subject: str
+    body: str
+    icon: str
+    color: str
+    created_at: str
+    updated_at: str
+
+
+class NewsletterAnnouncementRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    subject: str
+    body: str  # plain text or simple HTML, line breaks preserved
+    cta_label: Optional[str] = ""  # optional call-to-action button text
+    cta_url: Optional[str] = ""    # optional CTA URL
+
+
+# -----------------------------------------------------------------------------
 # Auth routes
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
@@ -1644,6 +1684,48 @@ async def event_attendance_stats(
 #         merchant → consent_merchant_offers)
 #       - per-attendance toggle for that channel (notify_push / notify_email)
 # -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# Variable substitution for message templates.
+#
+# Supported placeholders (case-insensitive braces):
+#   {{event_title}}, {{event_date}}, {{event_location}}, {{organizer_name}},
+#   {{event_url}}, {{registration_url}}, {{nickname}}.
+#
+# All variables that don't depend on the recipient can be substituted once
+# per send. {{nickname}} requires per-recipient substitution and is filled
+# right before the email/push is dispatched to each user.
+# -----------------------------------------------------------------------------
+def substitute_event_vars(text: str, ev: dict) -> str:
+    if not text or "{{" not in text:
+        return text or ""
+    site = os.environ.get("PUBLIC_SITE_URL", "https://viikinkitapahtumat.fi")
+    repl = {
+        "{{event_title}}": (ev.get("title_fi") or ev.get("title_en") or "").strip(),
+        "{{event_date}}": (ev.get("start_date") or "").strip(),
+        "{{event_location}}": (ev.get("location") or "").strip(),
+        "{{organizer_name}}": (ev.get("organizer") or "").strip(),
+        "{{event_url}}": f"{site}/events/{ev.get('id', '')}",
+        "{{registration_url}}": (ev.get("registration_url") or "").strip(),
+    }
+    out = text
+    for k, v in repl.items():
+        out = out.replace(k, v)
+    return out
+
+
+def substitute_recipient_vars(text: str, recipient: dict | None) -> str:
+    if not text or "{{nickname}}" not in text:
+        return text or ""
+    nick = ""
+    if recipient:
+        nick = (
+            recipient.get("nickname")
+            or (recipient.get("email", "").split("@")[0] if recipient.get("email") else "")
+            or ""
+        )
+    return text.replace("{{nickname}}", nick)
+
+
 @api_router.post("/messages/send")
 async def send_message_to_attendees(
     payload: SendMessageRequest, user: dict = Depends(get_current_user)
@@ -1794,13 +1876,36 @@ async def send_message_to_attendees(
         or ("Viikinkitapahtumat" if is_admin else "Viestin lähettäjä")
     )
 
+    # Variable substitution — event-level placeholders are filled once for all
+    # recipients (event_title, event_date, event_location, organizer_name,
+    # event_url, registration_url). {{nickname}} is substituted per-recipient
+    # below; if it's missing from the text these calls are no-ops.
+    effective_subject = substitute_event_vars(payload.subject, ev)
+    effective_body = substitute_event_vars(payload.body, ev)
+
+    # Look up nicknames for every consenter so per-recipient {{nickname}} can
+    # be filled in both the email body and the inbox copy below.
+    recipient_meta: dict[str, dict] = {}
+    if effective_body.find("{{nickname}}") >= 0 or effective_subject.find("{{nickname}}") >= 0:
+        nick_users = await db.users.find(
+            {"id": {"$in": list(consenter_ids)}},
+            {"_id": 0, "id": 1, "nickname": 1, "email": 1},
+        ).to_list(5000)
+        recipient_meta = {u["id"]: u for u in nick_users}
+
     sent_push = 0
     if push_user_ids:
-        push_body = f"{payload.body[:140]}\n— {sender_label}"
+        # Push notifications go out as ONE broadcast (Expo bulk send). We strip
+        # {{nickname}} for push so the placeholder doesn't leak into the
+        # notification; per-device personalisation would require an N-way send
+        # which isn't worth the cost for a 200-char push body.
+        push_subject = effective_subject.replace("{{nickname}}", "")
+        push_body_text = effective_body.replace("{{nickname}}", "")
+        push_body = f"{push_body_text[:140]}\n— {sender_label}"
         result = await push_send_to_users(
             db,
             push_user_ids,
-            title=payload.subject,
+            title=push_subject,
             body=push_body[:200],
             data={"event_id": payload.event_id, "sender": sender_label},
         )
@@ -1821,21 +1926,29 @@ async def send_message_to_attendees(
                 f"<a href='mailto:{html_escape(organizer_email)}' style='color:#C19C4D;'>"
                 f"{html_escape(organizer_email)}</a></div>"
             )
-        html = (
-            f"<div style='font-family:system-ui,Arial,sans-serif;background:#0E0B09;color:#E8E2D5;padding:24px;'>"
-            f"<div style='max-width:560px;margin:auto;border:1px solid #352A23;padding:24px;'>"
-            f"<div style='font-size:11px;letter-spacing:1.6px;color:#C19C4D;text-transform:uppercase;'>{html_escape(ev_title)}</div>"
-            f"<h1 style='font-family:Georgia,serif;color:#E8E2D5;margin:8px 0 16px;'>{html_escape(payload.subject)}</h1>"
-            f"<div style='white-space:pre-wrap;line-height:1.55;color:#E8E2D5;'>{html_escape(payload.body)}</div>"
-            f"{signature_block}"
-            f"<hr style='border:none;border-top:1px solid #352A23;margin:24px 0;'>"
-            f"<div style='font-size:11px;color:#8E8276;'>Lähettäjä: {html_escape(sender_label)} · "
-            f"<a href='{site}/profile' style='color:#C19C4D;'>Hallinnoi viestiasetuksia</a></div>"
-            f"</div></div>"
-        )
+        # We need recipient -> id mapping so {{nickname}} substitution can use
+        # the correct nickname per outgoing email. consenter_emails is id->email;
+        # build the reverse view of email->user once here.
+        email_to_id = {v: k for k, v in consenter_emails.items()}
         for em in email_recipients:
             try:
-                await svc_send_email(em, payload.subject, html)
+                recip_id = email_to_id.get(em)
+                recip = recipient_meta.get(recip_id) if recip_id else None
+                rec_subject = substitute_recipient_vars(effective_subject, recip)
+                rec_body = substitute_recipient_vars(effective_body, recip)
+                html = (
+                    f"<div style='font-family:system-ui,Arial,sans-serif;background:#0E0B09;color:#E8E2D5;padding:24px;'>"
+                    f"<div style='max-width:560px;margin:auto;border:1px solid #352A23;padding:24px;'>"
+                    f"<div style='font-size:11px;letter-spacing:1.6px;color:#C19C4D;text-transform:uppercase;'>{html_escape(ev_title)}</div>"
+                    f"<h1 style='font-family:Georgia,serif;color:#E8E2D5;margin:8px 0 16px;'>{html_escape(rec_subject)}</h1>"
+                    f"<div style='white-space:pre-wrap;line-height:1.55;color:#E8E2D5;'>{html_escape(rec_body)}</div>"
+                    f"{signature_block}"
+                    f"<hr style='border:none;border-top:1px solid #352A23;margin:24px 0;'>"
+                    f"<div style='font-size:11px;color:#8E8276;'>Lähettäjä: {html_escape(sender_label)} · "
+                    f"<a href='{site}/profile' style='color:#C19C4D;'>Hallinnoi viestiasetuksia</a></div>"
+                    f"</div></div>"
+                )
+                await svc_send_email(em, rec_subject, html)
                 sent_email += 1
             except Exception:
                 logger.exception("Failed sending merchant/organizer email to %s", em)
@@ -1855,8 +1968,8 @@ async def send_message_to_attendees(
             "event_id": payload.event_id,
             "sender_id": user["id"],
             "channel": payload.channel,
-            "subject": payload.subject[:200],
-            "body_preview": payload.body[:200],
+            "subject": effective_subject[:200],
+            "body_preview": effective_body[:200],
             "target_categories": target_categories,
             "sent_push": sent_push,
             "sent_email": sent_email,
@@ -1880,9 +1993,10 @@ async def send_message_to_attendees(
         sender_id=user["id"],
         sender_label=sender_label,
         channel=payload.channel,
-        subject=payload.subject,
-        body=payload.body,
+        subject=effective_subject,
+        body=effective_body,
         target_categories=target_categories,
+        recipient_meta=recipient_meta,
     )
     return_payload["batch_id"] = batch_id
     return return_payload
@@ -2663,6 +2777,7 @@ async def _record_inbox_rows(
     subject: str,
     body: str,
     target_categories: Optional[list[str]] = None,
+    recipient_meta: Optional[dict[str, dict]] = None,
 ) -> str:
     """Insert one `user_messages` row per recipient sharing one batch_id.
 
@@ -2670,30 +2785,45 @@ async def _record_inbox_rows(
     notifications (RSVP reminders, future notifications, etc.) so every
     notification a user receives ends up in their in-app inbox where they
     can read it later from the Viestit menu. Returns the batch_id.
+
+    If `recipient_meta` is provided (id -> user dict with nickname/email)
+    AND the subject/body contain `{{nickname}}`, each row gets a personalised
+    copy with the placeholder filled in.
     """
     if not recipient_ids:
         return ""
     batch_id = str(uuid.uuid4())
     now_iso = datetime.now(timezone.utc).isoformat()
-    rows = [
-        {
-            "id": str(uuid.uuid4()),
-            "batch_id": batch_id,
-            "event_id": event_id,
-            "sender_id": sender_id,
-            "sender_label": sender_label,
-            "recipient_id": uid,
-            "channel": channel,
-            "subject": (subject or "")[:200],
-            "body": body or "",
-            "target_categories": target_categories or [],
-            "created_at": now_iso,
-            "read_at": None,
-            "deleted_by_recipient": False,
-            "deleted_by_sender": False,
-        }
-        for uid in recipient_ids
-    ]
+    needs_nick = (subject and "{{nickname}}" in subject) or (
+        body and "{{nickname}}" in body
+    )
+    rows = []
+    for uid in recipient_ids:
+        if needs_nick and recipient_meta is not None:
+            recip = recipient_meta.get(uid)
+            row_subject = substitute_recipient_vars(subject, recip)
+            row_body = substitute_recipient_vars(body, recip)
+        else:
+            row_subject = subject or ""
+            row_body = body or ""
+        rows.append(
+            {
+                "id": str(uuid.uuid4()),
+                "batch_id": batch_id,
+                "event_id": event_id,
+                "sender_id": sender_id,
+                "sender_label": sender_label,
+                "recipient_id": uid,
+                "channel": channel,
+                "subject": row_subject[:200],
+                "body": row_body,
+                "target_categories": target_categories or [],
+                "created_at": now_iso,
+                "read_at": None,
+                "deleted_by_recipient": False,
+                "deleted_by_sender": False,
+            }
+        )
     await db.user_messages.insert_many(rows)
     return batch_id
 
@@ -2843,6 +2973,194 @@ async def admin_run_reminders(days_before: int = 7):
     events that have never been reminded on that channel before (per-event
     dedup, not per-day). Default 7 days before event."""
     return await _run_daily_event_reminders(days_before)
+
+
+# -----------------------------------------------------------------------------
+# Email templates — admin-only library of reusable subject/body presets that
+# the compose page surfaces in a "Pohjat" tab. Supports per-recipient variable
+# substitution via {{event_title}}, {{event_date}}, {{event_location}},
+# {{organizer_name}}, {{event_url}}, {{registration_url}}, {{nickname}}.
+# -----------------------------------------------------------------------------
+def _serialize_email_template(doc: dict) -> dict:
+    return {
+        "id": doc["id"],
+        "name": doc.get("name", ""),
+        "subject": doc.get("subject", ""),
+        "body": doc.get("body", ""),
+        "icon": doc.get("icon") or "Mail",
+        "color": doc.get("color") or "#C8492C",
+        "created_at": doc.get("created_at", ""),
+        "updated_at": doc.get("updated_at", doc.get("created_at", "")),
+    }
+
+
+@api_router.get(
+    "/email-templates",
+    response_model=List[EmailTemplateOut],
+)
+async def list_email_templates(user: dict = Depends(get_current_user)):
+    """Anyone with messaging access (admin OR paid merchant/organizer) can
+    read the template library — so users compose with the same toolkit the
+    admin curates. Plain users see an empty list."""
+    is_admin = user.get("role") == "admin"
+    if not is_admin and not user.get("paid_messaging_enabled"):
+        return []
+    docs = await db.email_templates.find({}, {"_id": 0}).sort("name", 1).to_list(500)
+    return [_serialize_email_template(d) for d in docs]
+
+
+@api_router.post(
+    "/admin/email-templates",
+    response_model=EmailTemplateOut,
+    dependencies=[Depends(get_admin_or_moderator)],
+)
+async def admin_create_email_template(payload: EmailTemplateCreate):
+    name = payload.name.strip()
+    subject = payload.subject.strip()
+    body = payload.body
+    if not name or not subject or not body or not body.strip():
+        raise HTTPException(status_code=422, detail="name, subject and body are required")
+    now_iso = datetime.now(timezone.utc).isoformat()
+    doc = {
+        "id": str(uuid.uuid4()),
+        "name": name[:120],
+        "subject": subject[:200],
+        "body": body[:5000],
+        "icon": (payload.icon or "Mail").strip()[:40] or "Mail",
+        "color": (payload.color or "#C8492C").strip()[:9] or "#C8492C",
+        "created_at": now_iso,
+        "updated_at": now_iso,
+    }
+    await db.email_templates.insert_one(doc)
+    return _serialize_email_template(doc)
+
+
+@api_router.patch(
+    "/admin/email-templates/{template_id}",
+    response_model=EmailTemplateOut,
+    dependencies=[Depends(get_admin_or_moderator)],
+)
+async def admin_update_email_template(template_id: str, payload: EmailTemplateUpdate):
+    existing = await db.email_templates.find_one({"id": template_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Template not found")
+    updates: dict = {}
+    if payload.name is not None:
+        updates["name"] = payload.name.strip()[:120]
+    if payload.subject is not None:
+        updates["subject"] = payload.subject.strip()[:200]
+    if payload.body is not None:
+        updates["body"] = payload.body[:5000]
+    if payload.icon is not None:
+        updates["icon"] = (payload.icon or "Mail").strip()[:40] or "Mail"
+    if payload.color is not None:
+        updates["color"] = (payload.color or "#C8492C").strip()[:9] or "#C8492C"
+    if updates:
+        updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+        await db.email_templates.update_one({"id": template_id}, {"$set": updates})
+    refreshed = await db.email_templates.find_one({"id": template_id}, {"_id": 0})
+    return _serialize_email_template(refreshed)
+
+
+@api_router.delete(
+    "/admin/email-templates/{template_id}",
+    dependencies=[Depends(get_admin_or_moderator)],
+)
+async def admin_delete_email_template(template_id: str):
+    res = await db.email_templates.delete_one({"id": template_id})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return {"deleted": True}
+
+
+# -----------------------------------------------------------------------------
+# Newsletter announcement — admin sends an ad-hoc bulletin to every active
+# newsletter subscriber (separate from the monthly digest). Used to announce
+# app or site updates, maintenance windows, partner offers, etc.
+# -----------------------------------------------------------------------------
+@api_router.post(
+    "/admin/newsletter/announcement",
+    dependencies=[Depends(get_admin_or_moderator)],
+)
+async def admin_send_newsletter_announcement(payload: NewsletterAnnouncementRequest):
+    subject = payload.subject.strip()
+    body = payload.body
+    if not subject or not body or not body.strip():
+        raise HTTPException(
+            status_code=422,
+            detail="subject and body are required",
+        )
+    subs = await db.newsletter_subscribers.find(
+        {"status": "active"},
+        {"_id": 0, "email": 1, "unsubscribe_token": 1},
+    ).to_list(20000)
+    if not subs:
+        return {"sent": 0, "recipients": 0, "skipped": 0}
+
+    from email_service import send_email as svc_send_email
+    site = os.environ.get("PUBLIC_SITE_URL", "https://viikinkitapahtumat.fi")
+    cta_label = (payload.cta_label or "").strip()
+    cta_url = (payload.cta_url or "").strip()
+    cta_block = ""
+    if cta_label and cta_url:
+        cta_block = (
+            f"<div style='margin:24px 0;'>"
+            f"<a href='{html_escape(cta_url)}' style='display:inline-block;padding:12px 22px;"
+            f"background:#C8492C;color:#F5EFE3;text-decoration:none;border-radius:4px;"
+            f"font-family:Georgia,serif;font-size:14px;letter-spacing:0.5px;'>"
+            f"{html_escape(cta_label)}</a></div>"
+        )
+
+    sent = 0
+    skipped = 0
+    for s in subs:
+        em = (s.get("email") or "").strip()
+        if not em:
+            skipped += 1
+            continue
+        unsub_token = (s.get("unsubscribe_token") or "").strip()
+        unsub_url = (
+            f"{site}/api/newsletter/unsubscribe?token={unsub_token}"
+            if unsub_token
+            else f"{site}/profile"
+        )
+        html = (
+            f"<div style='font-family:system-ui,Arial,sans-serif;background:#0E0B09;color:#E8E2D5;padding:24px;'>"
+            f"<div style='max-width:560px;margin:auto;border:1px solid #352A23;padding:24px;'>"
+            f"<div style='font-size:11px;letter-spacing:1.6px;color:#C19C4D;text-transform:uppercase;'>Viikinkitapahtumat</div>"
+            f"<h1 style='font-family:Georgia,serif;color:#E8E2D5;margin:8px 0 16px;'>{html_escape(subject)}</h1>"
+            f"<div style='white-space:pre-wrap;line-height:1.6;color:#E8E2D5;'>{html_escape(body)}</div>"
+            f"{cta_block}"
+            f"<hr style='border:none;border-top:1px solid #352A23;margin:24px 0;'>"
+            f"<div style='font-size:11px;color:#8E8276;'>Sait tämän viestin, koska olet "
+            f"viikinkitapahtumat.fi-uutiskirjeen tilaaja. "
+            f"<a href='{html_escape(unsub_url)}' style='color:#C19C4D;'>Peruuta tilaus</a></div>"
+            f"</div></div>"
+        )
+        try:
+            await svc_send_email(em, subject, html)
+            sent += 1
+        except Exception:
+            logger.exception("Failed sending newsletter announcement to %s", em)
+            skipped += 1
+
+    # Audit row — re-uses the message_log shape so it shows up in the same
+    # admin diagnostics surface, but with event_id="newsletter" sentinel.
+    await db.message_log.insert_one(
+        {
+            "event_id": "newsletter",
+            "sender_id": "admin",
+            "channel": "email",
+            "subject": subject[:200],
+            "body_preview": body[:200],
+            "target_categories": [],
+            "sent_push": 0,
+            "sent_email": sent,
+            "recipients": len(subs),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+    return {"sent": sent, "recipients": len(subs), "skipped": skipped}
 
 
 # -----------------------------------------------------------------------------
@@ -5524,6 +5842,8 @@ async def on_startup():
     await db.event_organizer_requests.create_index("event_id")
     await db.event_organizer_requests.create_index("status")
     await db.event_organizer_requests.create_index("id", unique=True)
+    await db.email_templates.create_index("id", unique=True)
+    await db.email_templates.create_index("name")
 
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@viikinkitapahtumat.fi").lower()
     admin_password = os.environ.get("ADMIN_PASSWORD")

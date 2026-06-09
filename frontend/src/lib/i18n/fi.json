@@ -344,7 +344,35 @@
       "run_btn": "Aja käännöstarkistus nyt",
       "show_gaps": "Näytä puuttuvat käännökset"
     },
-    "refresh": "Päivitä"
+    "refresh": "Päivitä",
+    "templates": {
+      "title": "Viestipohjat",
+      "help": "Hallinnoi viestien valmiita pohjia. Pohjat näkyvät kaikille viestin lähettäjille (admin, kauppiaat, järjestäjät) compose-näkymän Pohjat-välilehdellä.",
+      "new": "+ Uusi pohja",
+      "empty": "Ei vielä pohjia. Luo ensimmäinen Uusi pohja -painikkeella.",
+      "name": "Pohjan nimi",
+      "subject": "Otsikko",
+      "body": "Viestin runko",
+      "icon": "Kuvake (lucide-react)",
+      "color": "Korostusväri",
+      "vars_help": "Käytettävissä olevat muuttujat: {{event_title}}, {{event_date}}, {{event_location}}, {{organizer_name}}, {{event_url}}, {{registration_url}}, {{nickname}}",
+      "save": "Tallenna",
+      "cancel": "Peruuta",
+      "delete": "Poista",
+      "confirm_delete": "Poistetaanko pohja \"{name}\"?",
+      "edit": "Muokkaa"
+    },
+    "announcement": {
+      "title": "Tiedote uutiskirjeen tilaajille",
+      "help": "Lähetä erillinen muotoiltava tiedote/posti uutiskirjeen tilaajille sovellusta ja sivustoa koskevista asioista. Tämä on kuukausittaisen koosteen ulkopuolinen viesti.",
+      "subject": "Otsikko",
+      "body": "Viesti",
+      "cta_label": "Painikkeen teksti (valinnainen)",
+      "cta_url": "Painikkeen URL (valinnainen)",
+      "send": "Lähetä tilaajille",
+      "confirm": "Lähetetäänkö tämä tiedote KAIKILLE aktiivisille uutiskirjeen tilaajille?",
+      "success": "Lähetetty {sent}/{recipients} tilaajalle."
+    }
   },
   "account": {
     "sign_in": "Kirjaudu",
@@ -518,7 +546,12 @@
     "targets": "Kohderyhmä",
     "targets_help_all": "Tyhjä = viesti lähetetään kaikille suostumuksen antaneille osallistujille.",
     "targets_help_some": "Viesti rajataan vain valittuihin kategorioihin kuuluville osallistujille.",
-    "no_push_tokens": "Push-vastaanottajia: 0. Yksikään valitsemistasi vastaanottajista ei ole vielä ottanut käyttöön mobiilisovelluksen push-notifikaatioita. Sähköpostit menevät silti perille jos kanavana on \"Sähköposti\" tai \"Push + Sähköposti\"."
+    "no_push_tokens": "Push-vastaanottajia: 0. Yksikään valitsemistasi vastaanottajista ei ole vielä ottanut käyttöön mobiilisovelluksen push-notifikaatioita. Sähköpostit menevät silti perille jos kanavana on \"Sähköposti\" tai \"Push + Sähköposti\".",
+    "templates_tab": "Pohjat",
+    "templates_load": "Käytä tätä pohjaa",
+    "templates_save_as": "Tallenna nykyinen pohjaksi",
+    "templates_empty": "Ei pohjia saatavilla. Admin voi lisätä pohjia paneelista \"Pohjat\".",
+    "vars_hint": "Käytettävissä: {{event_title}}, {{event_date}}, {{event_location}}, {{organizer_name}}, {{event_url}}, {{registration_url}}, {{nickname}}"
   },
   "messages": {
     "feature": "Viestintä",

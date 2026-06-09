@@ -316,7 +316,35 @@
       "run_btn": "Kør oversættelsesfejning nu",
       "show_gaps": "Vis manglende oversættelser"
     },
-    "refresh": "Opdater"
+    "refresh": "Opdater",
+    "templates": {
+      "title": "Message templates",
+      "help": "Manage reusable message templates. Templates appear in the compose page Templates tab for every sender (admin, merchants, organizers).",
+      "new": "+ New template",
+      "empty": "No templates yet. Click New template to create the first one.",
+      "name": "Template name",
+      "subject": "Subject",
+      "body": "Message body",
+      "icon": "Icon (lucide-react)",
+      "color": "Accent color",
+      "vars_help": "Available variables: {{event_title}}, {{event_date}}, {{event_location}}, {{organizer_name}}, {{event_url}}, {{registration_url}}, {{nickname}}",
+      "save": "Save",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "confirm_delete": "Delete template \"{name}\"?",
+      "edit": "Edit"
+    },
+    "announcement": {
+      "title": "Newsletter announcement",
+      "help": "Send a standalone bulletin to newsletter subscribers about app or site updates. This is separate from the monthly digest.",
+      "subject": "Subject",
+      "body": "Message",
+      "cta_label": "Button label (optional)",
+      "cta_url": "Button URL (optional)",
+      "send": "Send to subscribers",
+      "confirm": "Send this announcement to ALL active newsletter subscribers?",
+      "success": "Sent to {sent}/{recipients} subscribers."
+    }
   },
   "account": {
     "sign_in": "Log ind",
@@ -488,7 +516,12 @@
     "targets": "Målgruppe",
     "targets_help_all": "Tomt = beskeden sendes til alle samtykkende deltagere.",
     "targets_help_some": "Beskeden begrænses til deltagere i de valgte kategorier.",
-    "no_push_tokens": "Push-modtagere: 0. Ingen af deltagerne har endnu aktiveret push-notifikationer i mobilappen. E-mail fungerer stadig hvis du har valgt \"E-mail\" eller \"Push + E-mail\"."
+    "no_push_tokens": "Push-modtagere: 0. Ingen af deltagerne har endnu aktiveret push-notifikationer i mobilappen. E-mail fungerer stadig hvis du har valgt \"E-mail\" eller \"Push + E-mail\".",
+    "templates_tab": "Templates",
+    "templates_load": "Use this template",
+    "templates_save_as": "Save current as template",
+    "templates_empty": "No templates available. Admin can add templates from the Templates panel.",
+    "vars_hint": "Available: {{event_title}}, {{event_date}}, {{event_location}}, {{organizer_name}}, {{event_url}}, {{registration_url}}, {{nickname}}"
   },
   "messages": {
     "feature": "Beskeder",

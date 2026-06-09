@@ -273,7 +273,35 @@
       "run_btn": "Käivita tõlkekontroll kohe",
       "show_gaps": "Kuva puuduvad tõlked"
     },
-    "refresh": "Värskenda"
+    "refresh": "Värskenda",
+    "templates": {
+      "title": "Message templates",
+      "help": "Manage reusable message templates. Templates appear in the compose page Templates tab for every sender (admin, merchants, organizers).",
+      "new": "+ New template",
+      "empty": "No templates yet. Click New template to create the first one.",
+      "name": "Template name",
+      "subject": "Subject",
+      "body": "Message body",
+      "icon": "Icon (lucide-react)",
+      "color": "Accent color",
+      "vars_help": "Available variables: {{event_title}}, {{event_date}}, {{event_location}}, {{organizer_name}}, {{event_url}}, {{registration_url}}, {{nickname}}",
+      "save": "Save",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "confirm_delete": "Delete template \"{name}\"?",
+      "edit": "Edit"
+    },
+    "announcement": {
+      "title": "Newsletter announcement",
+      "help": "Send a standalone bulletin to newsletter subscribers about app or site updates. This is separate from the monthly digest.",
+      "subject": "Subject",
+      "body": "Message",
+      "cta_label": "Button label (optional)",
+      "cta_url": "Button URL (optional)",
+      "send": "Send to subscribers",
+      "confirm": "Send this announcement to ALL active newsletter subscribers?",
+      "success": "Sent to {sent}/{recipients} subscribers."
+    }
   },
   "courses": {
     "title": "Kursused ja töötoad",
@@ -435,7 +463,12 @@
     "targets": "Sihtgrupp",
     "targets_help_all": "Tühi = sõnum saadetakse kõigile nõusoleku andnud osalejatele.",
     "targets_help_some": "Sõnum saadetakse ainult valitud kategooriate osalejatele.",
-    "no_push_tokens": "Push-saajaid: 0. Ükski osaleja pole veel mobiilirakenduses push-teateid aktiveerinud. E-post toimib endiselt, kui valisid \"E-post\" või \"Push + E-post\"."
+    "no_push_tokens": "Push-saajaid: 0. Ükski osaleja pole veel mobiilirakenduses push-teateid aktiveerinud. E-post toimib endiselt, kui valisid \"E-post\" või \"Push + E-post\".",
+    "templates_tab": "Templates",
+    "templates_load": "Use this template",
+    "templates_save_as": "Save current as template",
+    "templates_empty": "No templates available. Admin can add templates from the Templates panel.",
+    "vars_hint": "Available: {{event_title}}, {{event_date}}, {{event_location}}, {{organizer_name}}, {{event_url}}, {{registration_url}}, {{nickname}}"
   },
   "messages": {
     "feature": "Sõnumid",

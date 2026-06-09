@@ -39,6 +39,26 @@ Modernise https://viikinkitapahtumat.fi with: visually better calendar/event lis
 - ✅ Localised admin toast/confirm messages.
 - ✅ 28/28 backend tests + frontend e2e all green.
 
+## ✅ Toteutettu 2026-02-01 — P1 Email-template-editori + Newsletter-tiedote
+- **Backend** (`/app/backend/server.py`):
+  - Uusi kokoelma `email_templates` ja CRUD: `GET /api/email-templates` (kaikille viestin lähettäjille), `POST/PATCH/DELETE /api/admin/email-templates*` (vain admin).
+  - Muuttujasubstituutio: `substitute_event_vars()` ja `substitute_recipient_vars()` -helperit; `{{event_title}}`, `{{event_date}}`, `{{event_location}}`, `{{organizer_name}}`, `{{event_url}}`, `{{registration_url}}` (kerran per tapahtuma) ja `{{nickname}}` (per vastaanottaja: sähköposti + inbox-kopio; pushista nimimerkki strippauksen kautta).
+  - `POST /api/admin/newsletter/announcement` — admin lähettää erillisen tiedotteen kaikille `active` uutiskirjeen tilaajille (subject + body + valinnainen CTA-painike + URL). Auditoidaan `message_log`-tauluun `event_id="newsletter"` sentineliä käyttäen.
+  - Indeksit luodaan startupissa.
+- **Frontend** (`/app/frontend/src/`):
+  - Uusi paneeli `components/admin/EmailTemplatesPanel.jsx` — CRUD-näkymä pohjille, kuvakevalitsin (10 lucide-ikonia), color-picker, esikatselu listalla. Lisätty `pages/admin/AdminMessages.jsx`-sivulle.
+  - `pages/SendMessage.jsx`: uusi välilehti "Pohjat" — listaa pohjat kuvakeneliöillä, "Käytä tätä pohjaa" -nappi täyttää subject+body, admineille "Tallenna nykyinen pohjaksi" -toiminto. Lisätty muuttujavinkki body-kentän alle.
+  - Uusi paneeli `components/admin/AdminAnnouncementPanel.jsx` — uutiskirjeen tiedotteen compose. Lisätty `pages/admin/AdminNewsletter.jsx`-sivulle Kuukausi-uutiskirje-paneelin alapuolelle.
+  - i18n: 7 uutta avainta kaikille 7 kielelle (`admin.templates.*`, `messaging.templates_*`, `messaging.vars_hint`, `admin.announcement.*`).
+- **Verifiointi:**
+  - Backend CRUD-curl: luonti, lista, PATCH (väri+ikoni vaihto), DELETE — kaikki OK.
+  - Substituutio-yksikkötesti: kaikki 7 muuttujaa korvautuvat oikein, puuttuva vastaanottaja → nickname-tyhjä, ei placeholder-vuoto.
+  - Smoke-testi (Playwright + admin login): EmailTemplatesPanel renderöityy, pohjan luonti onnistuu, pohja näkyy compose-sivun Pohjat-välilehdellä (1 pohja), "Käytä tätä pohjaa" -nappi täytti otsikon (`Muistutus: {{event_title}}`) ja rungon (`Hei {{nickname}}!...`). Newsletter-announcement-paneeli renderöityy.
+  - Lint: olemassa olevia `react-hooks/set-state-in-effect` -false-positiiveja kaikissa admin-paneeleissa (pre-existing, ei oma regressioni).
+- **Mobile:** Ei tehty tämän iteraation aikana (user pyysi "vain web nyt").
+
+
+
 ## ✅ Toteutettu 2026-02-01 — Tapahtuman ilmoittautumislomake-linkki
 - **Backend** (`/app/backend/server.py`): lisätty `registration_url: Optional[str] = ""` malleihin `EventCreate`, `EventOut`, `EventEdit`.
 - **Web Submit-lomake** (`/app/frontend/src/pages/Submit.jsx`): uusi input-kenttä "Ilmoittautumislomakkeen URL" `Lisätietolinkki`-kentän alapuolelle.
@@ -992,6 +1012,11 @@ See `/app/memory/test_credentials.md`.
 - **"Mitä seuraavaksi" -osio kotisivulle** — seuraavat 3 tapahtumaa heti kotisivulla ilman tarvetta kelata listaa. Parantaisi "mobile first"-kokemusta.
 - **Sentry / crash-lokaali** — Play Console mapping.txt -varoituksien ratkaisu. Saataisiin myös tuotannon JS-kaatumiset tarkasti luettavina.
 - **Kauppiaskortin ammattimaisempi käännösten läpikäynti** *(2026-04-30 idea)* — DA/DE/ET/PL käännökset ovat kohtuulliset mutta natiivi puhuja hioisi idiomeja paremmiksi (esim. DE "Reenactor" → "Living-History-Darsteller"). ~20 min per kieli.
+- **Ilmoittautuneiden määrä ulkoisesta lomakkeesta** *(2026-02-01 idea)* — kun järjestäjä linkittää ulkoisen ilmoittautumislomakkeen (`registration_url`), voisi olla hyödyllistä näyttää ilmoittautuneiden määrä myös käyttäjille luottamustekijänä tapahtuman suosiosta. Vaihtoehdot:
+  1. **Manuaalinen** — Admin-paneeliin lisätään `external_registration_count: int` -kenttä, jonka järjestäjä voi päivittää itse. Yksinkertainen ja luotettava.
+  2. **Google Sheets -integraatio** — jos ulkoinen lomake on Google Forms, järjestäjä antaa Sheets-linkin ja APScheduler-job poolaa määrän kerran päivässä. Vaatii Google Sheets API-credentialit ja per-event-konfiguraation.
+  3. **Webhook** — ulkoinen järjestelmä lähettää POST-pyynnön `/api/events/{id}/external-count` kun ilmoittautuneiden määrä muuttuu. Vaatii järjestäjältä webhook-tuen lomakejärjestelmässään.
+  Suositus: aloita vaihtoehdolla 1 (1 t toteutus), arvioi käyttö, ja päätä myöhemmin tarvitseeko automaatio.
 
 ### 🔵 P3 — Refaktoroinnit, tekninen velka
 - **`server.py`-refaktorointi reittitiedostoiksi** — nyt ~4000 riviä. Jaetaan `routes/auth.py`, `routes/events.py`, `routes/admin.py`, `routes/merchants.py`, `routes/messaging.py`. **Edellyttää** pytest-suiten olemassaoloa regressioturvana.

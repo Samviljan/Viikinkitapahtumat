@@ -316,7 +316,35 @@
       "run_btn": "Übersetzungslauf jetzt starten",
       "show_gaps": "Fehlende Übersetzungen anzeigen"
     },
-    "refresh": "Aktualisieren"
+    "refresh": "Aktualisieren",
+    "templates": {
+      "title": "Message templates",
+      "help": "Manage reusable message templates. Templates appear in the compose page Templates tab for every sender (admin, merchants, organizers).",
+      "new": "+ New template",
+      "empty": "No templates yet. Click New template to create the first one.",
+      "name": "Template name",
+      "subject": "Subject",
+      "body": "Message body",
+      "icon": "Icon (lucide-react)",
+      "color": "Accent color",
+      "vars_help": "Available variables: {{event_title}}, {{event_date}}, {{event_location}}, {{organizer_name}}, {{event_url}}, {{registration_url}}, {{nickname}}",
+      "save": "Save",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "confirm_delete": "Delete template \"{name}\"?",
+      "edit": "Edit"
+    },
+    "announcement": {
+      "title": "Newsletter announcement",
+      "help": "Send a standalone bulletin to newsletter subscribers about app or site updates. This is separate from the monthly digest.",
+      "subject": "Subject",
+      "body": "Message",
+      "cta_label": "Button label (optional)",
+      "cta_url": "Button URL (optional)",
+      "send": "Send to subscribers",
+      "confirm": "Send this announcement to ALL active newsletter subscribers?",
+      "success": "Sent to {sent}/{recipients} subscribers."
+    }
   },
   "account": {
     "sign_in": "Anmelden",
@@ -488,7 +516,12 @@
     "targets": "Zielgruppe",
     "targets_help_all": "Leer = Nachricht geht an alle einwilligenden Teilnehmer.",
     "targets_help_some": "Nachricht wird auf Teilnehmer der gewählten Kategorien beschränkt.",
-    "no_push_tokens": "Push-Empfänger: 0. Keiner der Teilnehmer hat bisher Push-Benachrichtigungen in der mobilen App aktiviert. E-Mails funktionieren weiterhin, wenn der Kanal \"E-Mail\" oder \"Push + E-Mail\" ist."
+    "no_push_tokens": "Push-Empfänger: 0. Keiner der Teilnehmer hat bisher Push-Benachrichtigungen in der mobilen App aktiviert. E-Mails funktionieren weiterhin, wenn der Kanal \"E-Mail\" oder \"Push + E-Mail\" ist.",
+    "templates_tab": "Templates",
+    "templates_load": "Use this template",
+    "templates_save_as": "Save current as template",
+    "templates_empty": "No templates available. Admin can add templates from the Templates panel.",
+    "vars_hint": "Available: {{event_title}}, {{event_date}}, {{event_location}}, {{organizer_name}}, {{event_url}}, {{registration_url}}, {{nickname}}"
   },
   "messages": {
     "feature": "Nachrichten",
