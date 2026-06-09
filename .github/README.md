@@ -15,6 +15,9 @@ Ajaa P1 regressiosuiten (26 testitapausta) automaattisesti:
 
 Muut "salaisuudet" (Resend, Emergent LLM, Expo) eivät ole pakollisia — testit eivät tee oikeita lähetyksiä, joten workflow käyttää dummy-arvoja.
 
+### Tärkeä pip-konfiguraatio
+`requirements.txt` sisältää `emergentintegrations`-paketin, joka on Emergent-sisäisessä indeksissä. Workflow asentaa sen `--extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/` -lipulla. Jos teet paikallista pip-asennusta puhtaalle koneelle, käytä samaa komentoa.
+
 ### Mitä workflow tekee
 1. Checkout
 2. Python 3.11 + pip cache

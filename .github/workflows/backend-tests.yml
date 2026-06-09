@@ -61,10 +61,10 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: pip
@@ -73,7 +73,10 @@ jobs:
       - name: Install backend dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r backend/requirements.txt
+          # emergentintegrations is hosted on a private Emergent index.
+          # Make pip aware of it before installing requirements.txt.
+          pip install -r backend/requirements.txt \
+            --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/
 
       - name: Write backend/.env
         run: |
