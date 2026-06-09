@@ -127,3 +127,4 @@ credentials.json
 *.key
 .credentials
 frontend/node_modules/.cache/default-development/22.pack
+frontend/node_modules/.cache/default-development/26.pack
