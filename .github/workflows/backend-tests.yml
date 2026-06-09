@@ -32,11 +32,14 @@ jobs:
         image: mongo:7
         ports:
           - 27017:27017
+        # Healthcheck runs INSIDE the container (mongo image ships mongosh),
+        # but the runner host does NOT have mongosh. We poll from the host
+        # using pymongo in the dedicated step below.
         options: >-
-          --health-cmd "mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok' || mongo --quiet --eval 'db.runCommand({ ping: 1 }).ok'"
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok'"
           --health-interval 10s
           --health-timeout 5s
-          --health-retries 5
+          --health-retries 10
 
     env:
       # --- DB / app config ---
@@ -104,15 +107,31 @@ jobs:
 
       - name: Wait for MongoDB to be ready
         run: |
-          for i in {1..20}; do
-            if mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok' mongodb://localhost:27017 2>/dev/null; then
-              echo "MongoDB ready"
-              exit 0
-            fi
-            sleep 1
-          done
-          echo "MongoDB never came up" >&2
-          exit 1
+          # pymongo is already installed from requirements.txt — use it to
+          # poll the service container until it accepts connections. mongosh
+          # binary is NOT pre-installed on ubuntu-latest runners.
+          python - <<'PYEOF'
+          import time, sys
+          from pymongo import MongoClient
+          from pymongo.errors import ConnectionFailure
+          for i in range(30):
+              try:
+                  client = MongoClient(
+                      "mongodb://localhost:27017",
+                      serverSelectionTimeoutMS=1000,
+                  )
+                  client.admin.command("ping")
+                  print(f"MongoDB ready after {i}s")
+                  sys.exit(0)
+              except ConnectionFailure:
+                  time.sleep(1)
+              except Exception as exc:
+                  # transient errors during boot — keep polling
+                  print(f"  attempt {i}: {exc}")
+                  time.sleep(1)
+          print("MongoDB never came up", file=sys.stderr)
+          sys.exit(1)
+          PYEOF
 
       - name: Start backend
         run: |
