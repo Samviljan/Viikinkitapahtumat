@@ -2696,23 +2696,21 @@ async def _record_inbox_rows(
 
 
 # -----------------------------------------------------------------------------
-# Daily reminders — push + email reminders for events in the next 3 days
+# Weekly reminder — push + email reminder ONCE, exactly 7 days before the event
 # -----------------------------------------------------------------------------
-async def _run_daily_event_reminders(window_days: int = 3) -> dict:
-    """Find approved events occurring in [now, now + window_days], find all
-    users RSVPed with notify_push/notify_email=true, and send. Idempotent
-    per (event_id, channel, day) by storing a marker doc in `reminder_log`.
+async def _run_daily_event_reminders(days_before: int = 7) -> dict:
+    """Find approved events that start exactly `days_before` days from today,
+    look up users who RSVPed with notify_push / notify_email = true, and send
+    ONE reminder. Idempotent per (event_id, channel) — once a channel has been
+    sent for an event, it is never sent again (even on manual re-runs).
     """
     today = datetime.now(timezone.utc).date()
-    horizon = today + timedelta(days=window_days)
+    target_date = today + timedelta(days=days_before)
 
     events = await db.events.find(
         {
             "status": "approved",
-            "start_date": {
-                "$gte": today.isoformat(),
-                "$lte": horizon.isoformat(),
-            },
+            "start_date": target_date.isoformat(),
         },
         {"_id": 0},
     ).to_list(500)
@@ -2733,12 +2731,12 @@ async def _run_daily_event_reminders(window_days: int = 3) -> dict:
         # Recipients who get an inbox copy = anyone who got either channel.
         inbox_recipient_ids = list({*push_user_ids, *email_user_ids})
         title = ev.get("title_fi") or ev.get("title") or "Viikinkitapahtumat"
-        body = "Tapahtuma alkaa pian — muista varata aika kalenteriin."
+        body = "Tapahtuma alkaa viikon päästä — muista varata aika kalenteriin."
 
         # Push
         if push_user_ids:
             already = await db.reminder_log.find_one(
-                {"event_id": eid, "channel": "push", "date": today.isoformat()}
+                {"event_id": eid, "channel": "push"}
             )
             if not already:
                 result = await push_send_to_users(
@@ -2762,7 +2760,7 @@ async def _run_daily_event_reminders(window_days: int = 3) -> dict:
         # they can read the reminder later from the Viestit menu.
         if inbox_recipient_ids:
             inbox_already = await db.reminder_log.find_one(
-                {"event_id": eid, "channel": "inbox", "date": today.isoformat()}
+                {"event_id": eid, "channel": "inbox"}
             )
             if not inbox_already:
                 # Channel reflects what was actually sent: both / push / email.
@@ -2792,7 +2790,7 @@ async def _run_daily_event_reminders(window_days: int = 3) -> dict:
         # Email — reuse existing reminder helper
         if email_user_ids:
             already_em = await db.reminder_log.find_one(
-                {"event_id": eid, "channel": "email", "date": today.isoformat()}
+                {"event_id": eid, "channel": "email"}
             )
             if not already_em:
                 from email_service import send_email as svc_send_email
@@ -2806,7 +2804,7 @@ async def _run_daily_event_reminders(window_days: int = 3) -> dict:
                     f"<div style='max-width:560px;margin:auto;border:1px solid #352A23;padding:24px;'>"
                     f"<div style='font-size:11px;letter-spacing:1.6px;color:#C19C4D;text-transform:uppercase;'>Muistutus</div>"
                     f"<h1 style='font-family:Georgia,serif;color:#E8E2D5;margin:8px 0 16px;'>{html_escape(ev_title)}</h1>"
-                    f"<p>Tapahtuma alkaa pian. Tarkista lisätiedot <a href='{site}/events/{eid}' style='color:#C19C4D;'>täältä</a>.</p>"
+                    f"<p>Tapahtuma alkaa viikon päästä. Tarkista lisätiedot <a href='{site}/events/{eid}' style='color:#C19C4D;'>täältä</a>.</p>"
                     f"<hr style='border:none;border-top:1px solid #352A23;margin:24px 0;'>"
                     f"<div style='font-size:11px;color:#8E8276;'><a href='{site}/profile' style='color:#C19C4D;'>Hallinnoi muistutusasetuksia</a></div>"
                     f"</div></div>"
@@ -2837,9 +2835,11 @@ async def _run_daily_event_reminders(window_days: int = 3) -> dict:
     "/admin/reminders/run-now",
     dependencies=[Depends(get_admin_or_moderator)],
 )
-async def admin_run_reminders(window_days: int = 3):
-    """Manual trigger for daily reminders (also wired on a scheduler)."""
-    return await _run_daily_event_reminders(window_days)
+async def admin_run_reminders(days_before: int = 7):
+    """Manual trigger for the weekly RSVP reminder job. Only re-sends for
+    events that have never been reminded on that channel before (per-event
+    dedup, not per-day). Default 7 days before event."""
+    return await _run_daily_event_reminders(days_before)
 
 
 # -----------------------------------------------------------------------------
@@ -5586,8 +5586,11 @@ async def on_startup():
         id="event_reminders_daily",
         replace_existing=True,
     )
-    # NEW: Daily push + email reminders for users who RSVPed to upcoming
-    # events with notify_push / notify_email = true.
+    # NEW: Weekly push + email reminder for users who RSVPed to upcoming
+    # events with notify_push / notify_email = true. Runs once per day at
+    # 09:15 Helsinki, but only fires for events that start EXACTLY 7 days
+    # from today, and uses per-event dedup so each event triggers exactly
+    # one reminder per channel — ever.
     scheduler.add_job(
         _run_daily_event_reminders,
         CronTrigger(hour=9, minute=15),

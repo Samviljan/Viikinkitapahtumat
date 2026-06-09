@@ -39,6 +39,21 @@ Modernise https://viikinkitapahtumat.fi with: visually better calendar/event lis
 - ✅ Localised admin toast/confirm messages.
 - ✅ 28/28 backend tests + frontend e2e all green.
 
+## ✅ Bugikorjaus 2026-02-01 — RSVP-muistutukset toistuvat joka päivä
+- **Ongelma:** Käyttäjä raportoi että ilmoittautumiseen liitetyt tapahtumamuistutukset saapuivat **joka päivä** ennen tapahtumaa. Bugi `_run_daily_event_reminders`-funktiossa (`/app/backend/server.py:2701`): ikkuna `[today, today+window_days=3]` matchasi tapahtumat 3 päivän aikana ennen alkua, ja dedup oli per-päivä → muistutus lähti T-3, T-2, T-1 ja T-0 päivinä.
+- **Korjaus:**
+  - Muutettu suodatus suoraan `start_date == today + 7 days` (täsmälleen viikko ennen tapahtumaa).
+  - Dedup-avain muutettu **per (event_id, channel)** (poistettu päivä) → sama tapahtuma ei voi koskaan saada saman kanavan muistutusta kahdesti.
+  - Parametri `window_days` → `days_before` (oletus 7).
+  - Sähköpostin ja pushin tekstit "alkaa pian" → "alkaa viikon päästä".
+  - Admin-endpoint `/api/admin/reminders/run-now?days_before=N` säilyttää samaa logiikkaa manuaaliseen ajoon.
+- **Tiedostot:**
+  - `/app/backend/server.py` rivit 2697-2842 (funktio) + 5589-5599 (scheduler-kommentti).
+  - `/app/memory/test_credentials.md` rivi 78 (endpoint-dokumentaatio päivitetty).
+- **Verifiointi:** Integraatio-testi loi synteettiset tapahtumat +3d / +7d / +8d ja yhden RSVP:n: vain +7d-tapahtuma sai muistutuksen, toinen ajo ei lähettänyt enää mitään (idempotency). 3/3 assertointia läpi.
+
+
+
 ## ✅ Toteutettu 2026-02-01 — Tietosuojalauseke päivitetty
 - **Tiedosto:** `/app/frontend/src/pages/Privacy.jsx` — kaikki 5 kielimoduulia (FI/EN/SV/DA/DE; ET ja PL perivät EN:n).
 - **Päiväys:** vanha "28.4.2026" → "1.2.2026" / "1 February 2026" / "1 februari 2026" / "1. februar 2026" / "1. Februar 2026".
