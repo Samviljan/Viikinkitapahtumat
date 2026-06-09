@@ -89,6 +89,7 @@ PyJWT==2.12.1
 pymongo==4.5.0
 pyparsing==3.3.2
 pytest==9.0.3
+pytest-asyncio==1.4.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.2
 python-jose==3.5.0

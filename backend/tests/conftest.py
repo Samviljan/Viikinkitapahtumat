@@ -1,6 +1,8 @@
 import os
 import pytest
 import requests
+from datetime import datetime, timezone, timedelta
+from pymongo import MongoClient
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL")
 if not BASE_URL:
@@ -55,3 +57,64 @@ def admin_client(base_url, admin_token):
         "Authorization": f"Bearer {admin_token}",
     })
     return s
+
+
+# ---- Direct DB access (sync via pymongo) ------------------------------------
+# Used by the P1 regression suite where we need to seed events/RSVPs/users at
+# specific dates that the HTTP API would not let us create (e.g. event with
+# start_date = today + 7 days, exactly).
+
+def _read_backend_env(key: str) -> str | None:
+    from pathlib import Path
+    p = Path("/app/backend/.env")
+    if not p.exists():
+        return None
+    for line in p.read_text().splitlines():
+        if line.startswith(f"{key}="):
+            return line.split("=", 1)[1].strip().strip('"')
+    return None
+
+
+@pytest.fixture(scope="session")
+def mongo():
+    mongo_url = os.environ.get("MONGO_URL") or _read_backend_env("MONGO_URL")
+    db_name = os.environ.get("DB_NAME") or _read_backend_env("DB_NAME")
+    assert mongo_url and db_name, "MONGO_URL and DB_NAME required"
+    client = MongoClient(mongo_url)
+    yield client[db_name]
+    client.close()
+
+
+# ---- P1 test helpers --------------------------------------------------------
+
+P1_PREFIX = "p1test_"
+
+
+@pytest.fixture
+def p1_cleanup(mongo):
+    """Tracks ids created during a single test so the test can rely on
+    `_pytest_artifact: True` flagging + per-test deletion. Yields a registry
+    dict; teardown deletes any documents whose id starts with `p1test_`.
+    """
+    yield
+    # Belt-and-suspenders cleanup using the shared prefix.
+    for coll in (
+        "users",
+        "events",
+        "event_attendees",
+        "email_templates",
+        "reminder_log",
+        "user_messages",
+        "message_log",
+        "newsletter_subscribers",
+    ):
+        mongo[coll].delete_many({"id": {"$regex": f"^{P1_PREFIX}"}})
+        mongo[coll].delete_many({"event_id": {"$regex": f"^{P1_PREFIX}"}})
+        mongo[coll].delete_many({"user_id": {"$regex": f"^{P1_PREFIX}"}})
+        mongo[coll].delete_many({"recipient_id": {"$regex": f"^{P1_PREFIX}"}})
+        mongo[coll].delete_many({"email": {"$regex": f"^{P1_PREFIX}"}})
+
+
+def p1_id(suffix: str = "") -> str:
+    import uuid as _u
+    return f"{P1_PREFIX}{_u.uuid4().hex[:10]}{('_' + suffix) if suffix else ''}"

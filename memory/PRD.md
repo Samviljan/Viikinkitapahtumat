@@ -39,6 +39,36 @@ Modernise https://viikinkitapahtumat.fi with: visually better calendar/event lis
 - ✅ Localised admin toast/confirm messages.
 - ✅ 28/28 backend tests + frontend e2e all green.
 
+## ✅ Toteutettu 2026-02-01 — P1 Backend pytest-regressiosuite (26/26 läpi)
+Aikaa kului ~1.5 tuntia (alle alkuperäisen 3,5–4,5 h ennusteen). Suite ajetaan ~30–48 sekunnissa.
+
+**Sijainti:** `/app/backend/tests/test_p1_*.py`
+
+**Sisältö (26 testitapausta 5 tiedostossa):**
+- `test_p1_reminders.py` (5) — RSVP T-7 muistutukset: laukeaa täsmälleen +7d, ei laukea +3d / +8d, idempotenssi (2× ajo = sama log-määrä), custom `days_before`-parametri toimii.
+- `test_p1_registration_url.py` (3) — Submit → GET round-trip; tyhjä kenttä → tyhjä merkkijono; admin PUT päivittää.
+- `test_p1_email_templates.py` (8) — POST/PATCH/DELETE admin OK, tyhjät kentät → 422, ei-autentikoitu → 401/403, list-haku adminille, anonyymille 401, puuttuvan DELETE → 404.
+- `test_p1_substitution.py` (7) — `substitute_event_vars` ja `substitute_recipient_vars` -unitit: kaikki 6 event-muuttujaa, nickname fallback (`email.split('@')[0]`), None-vastaanottaja → tyhjä placeholder, no-op tyhjille/braces-puuttuville teksteille.
+- `test_p1_newsletter_announcement.py` (3) — Auth-vaatimus, validointi (tyhjä subject/body → 422), recipients-laskuri kattaa vain `active`-tilaajat, `message_log` audit-rivi kirjautuu `event_id="newsletter"`.
+
+**Konfiguraatio:**
+- `pytest.ini` lisätty backendiin
+- `pytest-asyncio==1.4.0` lisätty `requirements.txt`:hen
+- `conftest.py` laajennettu sessio-tason `mongo`-fixturella (pymongo), `p1_cleanup`-fixturella (prefix-pohjainen siivous) ja `p1_id()`-helperilla
+- `tests/README.md` dokumentoi ajamisen, ympäristömuuttujat, marker `-m p1`, ja siivousskriptin
+
+**Suoritus:**
+```bash
+cd /app/backend && TEST_ADMIN_PASSWORD='...' python3 -m pytest tests/test_p1_*.py -v
+```
+
+**Vaikutus:**
+- 🔓 **P3 `server.py` refaktorointi reittitiedostoiksi nyt turvallista** — kun saamme 6000-rivisen monoliitin pilkottua, regressiosuite suojaa kriittisiä polkuja.
+- Stripe-integraatio voidaan tehdä turvallisesti tämän päälle.
+- CI-kelpoinen — suite ajaa alle minuutissa ja palauttaa exit-code:n.
+
+
+
 ## ✅ Toteutettu 2026-02-01 — P1 Email-template-editori + Newsletter-tiedote
 - **Backend** (`/app/backend/server.py`):
   - Uusi kokoelma `email_templates` ja CRUD: `GET /api/email-templates` (kaikille viestin lähettäjille), `POST/PATCH/DELETE /api/admin/email-templates*` (vain admin).
