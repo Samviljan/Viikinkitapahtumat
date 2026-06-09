@@ -21,6 +21,12 @@ on:
       - ".github/workflows/backend-tests.yml"
   workflow_dispatch: {}
 
+# Principle of least privilege: this workflow only needs to read the repo
+# to check out code. No deployment, comments or release actions are made.
+# CodeQL flags missing top-level `permissions` as a hardening issue.
+permissions:
+  contents: read
+
 jobs:
   p1-suite:
     name: P1 pytest (26 tests)
