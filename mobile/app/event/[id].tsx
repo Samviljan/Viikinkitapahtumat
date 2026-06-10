@@ -260,21 +260,24 @@ export default function EventDetail() {
       </View>
 
       {/* Description modal — full text rendered with scroll, dismiss on
-          backdrop tap or × button. */}
+          backdrop tap or × button. We intentionally do NOT wrap the sheet
+          in a Pressable: that would capture vertical pan gestures and
+          break ScrollView scrolling on the long description text. */}
       <Modal
         visible={descOpen}
         animationType="fade"
         transparent
         onRequestClose={() => setDescOpen(false)}
       >
-        <Pressable
-          style={modalStyles.backdrop}
-          onPress={() => setDescOpen(false)}
-        >
+        <View style={modalStyles.backdrop}>
+          {/* Dismiss layer — only above and below the sheet. The sheet
+              itself is a plain View, so its touch events go to ScrollView
+              for scrolling. */}
           <Pressable
-            style={modalStyles.sheet}
-            onPress={(e) => e.stopPropagation()}
-          >
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => setDescOpen(false)}
+          />
+          <View style={modalStyles.sheet}>
             <View style={modalStyles.header}>
               <Text style={modalStyles.title} numberOfLines={2}>
                 {titleText}
@@ -291,11 +294,13 @@ export default function EventDetail() {
             <ScrollView
               style={modalStyles.scroll}
               contentContainerStyle={{ paddingBottom: spacing.lg }}
+              showsVerticalScrollIndicator={true}
+              nestedScrollEnabled={true}
             >
               <Text style={modalStyles.body}>{descText}</Text>
             </ScrollView>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
     </ScrollView>
   );
