@@ -4424,7 +4424,6 @@ async def get_article(slug: str):
 
 
 # ----- Admin CRUD for articles ------------------------------------------------
-import re as _re  # local alias — pattern is used only by the helper below
 
 
 def _slugify(text: str) -> str:
@@ -4438,8 +4437,8 @@ def _slugify(text: str) -> str:
         "ü": "u", "ß": "ss", "ñ": "n", "ç": "c", "ø": "o", "æ": "ae",
     })
     text = text.translate(table)
-    text = _re.sub(r"[^a-z0-9\s-]+", "", text)
-    text = _re.sub(r"[\s_-]+", "-", text).strip("-")
+    text = re.sub(r"[^a-z0-9\s-]+", "", text)
+    text = re.sub(r"[\s_-]+", "-", text).strip("-")
     return text[:80] or "artikkeli"
 
 
@@ -5241,6 +5240,15 @@ async def prerender_event(event_id: str, request: Request):
     <meta http-equiv="refresh">, so if a real user lands here directly
     they get the interactive page after the bot snapshot has been read.
     """
+    # SECURITY: constrain `event_id` to the safe UUID-hex+hyphen alphabet
+    # before it flows anywhere near the HTML response. This is defence in
+    # depth on top of `html_escape` — protects against reflected XSS even
+    # if a downstream formatter ever forgets to escape. Real event IDs are
+    # UUID4 strings (see EventCreate) so any non-conforming ID is invalid
+    # by definition and can short-circuit to 404 without DB lookup.
+    if not re.fullmatch(r"[A-Za-z0-9._-]{1,64}", event_id):
+        raise HTTPException(status_code=404, detail="Event not found")
+
     event = await db.events.find_one({"id": event_id, "status": "approved"}, {"_id": 0})
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
@@ -5266,7 +5274,21 @@ async def prerender_event(event_id: str, request: Request):
     registration = (event.get("registration_url") or "").strip()
 
     jsonld = _event_jsonld(event, canonical, og_image)
-    jsonld_str = json.dumps(jsonld, ensure_ascii=False, separators=(",", ":"))
+    # JSON inside a <script> tag is XSS-prone if any value contains
+    # `</script>`, `<!--` or similar HTML-sensitive sequences. `json.dumps`
+    # does NOT escape `<`, `>` or `&` — they are valid in JSON but not
+    # safe when the payload lives inside an HTML <script>. Escape these
+    # to their Unicode equivalents so the JSON stays semantically the
+    # same while being unable to break out of the script context.
+    # https://owasp.org/www-community/attacks/xss/ — DOM/Stored XSS via JSON
+    jsonld_str = (
+        json.dumps(jsonld, ensure_ascii=False, separators=(",", ":"))
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("&", "\\u0026")
+        .replace("\u2028", "\\u2028")
+        .replace("\u2029", "\\u2029")
+    )
 
     date_str = start if not end or end == start else f"{start} – {end}"
 
