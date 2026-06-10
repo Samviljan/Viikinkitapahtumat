@@ -1126,3 +1126,18 @@ See `/app/memory/test_credentials.md`.
 - Both seeded articles now have full localized title/excerpt/body for fi, en, sv, da, de, et, pl — verified via `/api/articles/{slug}` payloads.
 - New `LatestArticlesStrip` home-page component — surfaces the 2 newest articles as compact cards (cover + "Uusi" label + title + excerpt + "Lue artikkeli" + "Katso kaikki →"). Sits between the existing "Mitä seuraavaksi" event strip and the featured grid.
 - Translation keys `home.whats_new`, `home.view_all`, `home.new_label` added.
+
+## 2026-06-10 — Admin CRUD UI for articles (DONE)
+- Backend (`server.py`):
+  - `POST /api/admin/articles` — create (auto-generates slug from FI title, supports Finnish ä/ö folding).
+  - `PATCH /api/admin/articles/{slug}` — partial update; only provided fields touched.
+  - `DELETE /api/admin/articles/{slug}` — removes the article + its GridFS images.
+  - `POST /api/admin/articles/{slug}/images` — multipart upload with `kind=cover|gallery`, sets `cover_image_url` or appends to `gallery[]`. 8 MB cap, image-only.
+  - `DELETE /api/admin/articles/{slug}/images?url=` — remove individual image (clears field + deletes GridFS blob).
+  - `POST /api/admin/articles/{slug}/translate` — synchronous trigger (admin can see translations appear immediately after save).
+- Frontend (`AdminArticlesPanel.jsx`, mounted in `AdminContent.jsx`):
+  - Article list with cover thumb + slug + "N/7 kieltä" translation status badge (gold for 7/7, amber for partial, stone for fewer).
+  - Inline "Uusi artikkeli" form with title/slug/excerpt/body/feedback-form-type fields. Slug auto-generated from title with manual override. Markdown hints under body field.
+  - Per-article inline editor: edit FI fields, upload cover + gallery images (drag-and-drop or click), delete individual images, trigger manual translation, delete entire article (with confirm dialog).
+- Pytest: `tests/test_p1_admin_articles_crud.py` — 8 new tests (auth gates, validation, slug auto-gen, duplicate rejection, PATCH, image upload, image MIME rejection, delete). Total article-related tests: 24, all green.
+

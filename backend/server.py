@@ -48,6 +48,7 @@ from translation_service import (
     fill_missing_translations,
     sweep_missing_translations,
     sweep_missing_article_translations,
+    fill_missing_article_translations,
 )
 
 
@@ -4420,6 +4421,319 @@ async def get_article(slug: str):
     if not doc:
         raise HTTPException(status_code=404, detail="Article not found")
     return ArticleOut(**doc)
+
+
+# ----- Admin CRUD for articles ------------------------------------------------
+import re as _re  # local alias — pattern is used only by the helper below
+
+
+def _slugify(text: str) -> str:
+    """Lowercase, ASCII-fold, hyphenate — safe enough for FI/SV/EN titles."""
+    text = (text or "").strip().lower()
+    if not text:
+        return ""
+    # Common Finnish/Swedish letter folding
+    table = str.maketrans({
+        "ä": "a", "ö": "o", "å": "a", "é": "e", "è": "e", "ê": "e",
+        "ü": "u", "ß": "ss", "ñ": "n", "ç": "c", "ø": "o", "æ": "ae",
+    })
+    text = text.translate(table)
+    text = _re.sub(r"[^a-z0-9\s-]+", "", text)
+    text = _re.sub(r"[\s_-]+", "-", text).strip("-")
+    return text[:80] or "artikkeli"
+
+
+class ArticleAdminCreate(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    slug: Optional[str] = ""  # auto-generated from title_fi when omitted
+    title_fi: str
+    title_en: Optional[str] = ""
+    title_sv: Optional[str] = ""
+    title_da: Optional[str] = ""
+    title_de: Optional[str] = ""
+    title_et: Optional[str] = ""
+    title_pl: Optional[str] = ""
+    excerpt_fi: Optional[str] = ""
+    excerpt_en: Optional[str] = ""
+    excerpt_sv: Optional[str] = ""
+    excerpt_da: Optional[str] = ""
+    excerpt_de: Optional[str] = ""
+    excerpt_et: Optional[str] = ""
+    excerpt_pl: Optional[str] = ""
+    body_fi: str
+    body_en: Optional[str] = ""
+    body_sv: Optional[str] = ""
+    body_da: Optional[str] = ""
+    body_de: Optional[str] = ""
+    body_et: Optional[str] = ""
+    body_pl: Optional[str] = ""
+    cover_image_url: Optional[str] = ""
+    gallery: Optional[List[str]] = None
+    feedback_form_type: Optional[str] = None
+    auto_translate: bool = True  # fire-and-forget background translation
+
+
+class ArticleAdminUpdate(BaseModel):
+    """All fields optional — only sent values are updated."""
+    model_config = ConfigDict(extra="ignore")
+    title_fi: Optional[str] = None
+    title_en: Optional[str] = None
+    title_sv: Optional[str] = None
+    title_da: Optional[str] = None
+    title_de: Optional[str] = None
+    title_et: Optional[str] = None
+    title_pl: Optional[str] = None
+    excerpt_fi: Optional[str] = None
+    excerpt_en: Optional[str] = None
+    excerpt_sv: Optional[str] = None
+    excerpt_da: Optional[str] = None
+    excerpt_de: Optional[str] = None
+    excerpt_et: Optional[str] = None
+    excerpt_pl: Optional[str] = None
+    body_fi: Optional[str] = None
+    body_en: Optional[str] = None
+    body_sv: Optional[str] = None
+    body_da: Optional[str] = None
+    body_de: Optional[str] = None
+    body_et: Optional[str] = None
+    body_pl: Optional[str] = None
+    cover_image_url: Optional[str] = None
+    gallery: Optional[List[str]] = None
+    feedback_form_type: Optional[str] = None  # use empty string to clear
+    auto_translate: bool = False  # re-translate empty fields after update
+
+
+@api_router.post(
+    "/admin/articles",
+    response_model=ArticleOut,
+    dependencies=[Depends(get_admin_user)],
+)
+async def admin_create_article(payload: ArticleAdminCreate):
+    """Admin: create a new article. Slug is auto-derived from title_fi
+    unless explicitly provided. Auto-translation runs as background task
+    so the response is fast — translations populate over the next ~30s."""
+    title_fi = (payload.title_fi or "").strip()
+    body_fi = (payload.body_fi or "").strip()
+    if not title_fi or not body_fi:
+        raise HTTPException(
+            status_code=422, detail="title_fi and body_fi are required"
+        )
+    slug = (payload.slug or "").strip() or _slugify(title_fi)
+    if not slug:
+        raise HTTPException(status_code=422, detail="Could not derive slug")
+    if await db.articles.find_one({"slug": slug}, {"_id": 1}):
+        raise HTTPException(
+            status_code=409, detail=f"Article with slug '{slug}' already exists"
+        )
+
+    now = datetime.now(timezone.utc).isoformat()
+    doc = payload.model_dump()
+    doc.pop("auto_translate", None)
+    doc["slug"] = slug
+    doc["id"] = str(uuid.uuid4())
+    doc["gallery"] = list(payload.gallery or [])
+    doc["published_at"] = now
+    doc["created_at"] = now
+    doc["updated_at"] = now
+    # Normalize feedback_form_type — empty string → None
+    if not (doc.get("feedback_form_type") or "").strip():
+        doc["feedback_form_type"] = None
+
+    await db.articles.insert_one(doc.copy())
+
+    if payload.auto_translate:
+        asyncio.create_task(_translate_single_article(slug))
+
+    return ArticleOut(**{k: v for k, v in doc.items() if k != "_id"})
+
+
+@api_router.patch(
+    "/admin/articles/{slug}",
+    response_model=ArticleOut,
+    dependencies=[Depends(get_admin_user)],
+)
+async def admin_update_article(slug: str, payload: ArticleAdminUpdate):
+    existing = await db.articles.find_one({"slug": slug}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Article not found")
+
+    updates: Dict[str, Any] = {}
+    raw = payload.model_dump(exclude_unset=True)
+    auto_translate = raw.pop("auto_translate", False)
+    for k, v in raw.items():
+        if k == "feedback_form_type":
+            # Empty string = explicit clear; None = "don't change"
+            updates[k] = (v.strip() if isinstance(v, str) and v.strip() else None)
+        else:
+            updates[k] = v
+    if not updates:
+        return ArticleOut(**existing)
+
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.articles.update_one({"slug": slug}, {"$set": updates})
+
+    if auto_translate:
+        asyncio.create_task(_translate_single_article(slug))
+
+    new_doc = await db.articles.find_one({"slug": slug}, {"_id": 0})
+    return ArticleOut(**new_doc)
+
+
+@api_router.delete(
+    "/admin/articles/{slug}",
+    dependencies=[Depends(get_admin_user)],
+)
+async def admin_delete_article(slug: str):
+    existing = await db.articles.find_one({"slug": slug}, {"_id": 0, "cover_image_url": 1, "gallery": 1})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Article not found")
+
+    # Best-effort: remove associated GridFS images (admin-uploaded only —
+    # `article_images` filenames are unique so this can't collide with
+    # other articles' files).
+    image_urls = []
+    if existing.get("cover_image_url"):
+        image_urls.append(existing["cover_image_url"])
+    for url in existing.get("gallery") or []:
+        if url:
+            image_urls.append(url)
+    for url in image_urls:
+        if not url or not url.startswith("/api/uploads/article-images/"):
+            continue
+        filename = url.rsplit("/", 1)[-1]
+        try:
+            file_doc = await db["article_images.files"].find_one(
+                {"filename": filename}, {"_id": 1}
+            )
+            if file_doc:
+                await _article_images_bucket().delete(file_doc["_id"])
+        except Exception:  # noqa: BLE001
+            logger.exception("Failed to delete article image %s", filename)
+
+    await db.articles.delete_one({"slug": slug})
+    return {"ok": True}
+
+
+@api_router.post(
+    "/admin/articles/{slug}/images",
+    dependencies=[Depends(get_admin_user)],
+)
+async def admin_upload_article_image(
+    slug: str,
+    file: UploadFile = File(...),
+    kind: str = Form("cover"),  # "cover" | "gallery"
+):
+    """Upload an article image. `kind=cover` sets `cover_image_url`,
+    `kind=gallery` appends to `gallery[]`. Old cover image is left in
+    GridFS (cheap; we may want it back). Frontend can call DELETE if it
+    wants to actually free storage."""
+    article = await db.articles.find_one({"slug": slug}, {"_id": 0, "gallery": 1})
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+    if kind not in ("cover", "gallery"):
+        raise HTTPException(status_code=422, detail="kind must be 'cover' or 'gallery'")
+
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=422, detail="Empty file")
+    if len(contents) > 8 * 1024 * 1024:  # 8 MB cap per image
+        raise HTTPException(status_code=413, detail="File too large (max 8 MB)")
+
+    ctype = (file.content_type or "").lower()
+    if not ctype.startswith("image/"):
+        raise HTTPException(status_code=415, detail="Only image uploads allowed")
+    ext_map = {
+        "image/jpeg": ".jpg", "image/jpg": ".jpg",
+        "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif",
+    }
+    ext = ext_map.get(ctype, Path(file.filename or "").suffix.lower() or ".png")
+    filename = f"article_{slug[:24]}_{kind}_{uuid.uuid4().hex[:10]}{ext}"
+    await _article_images_bucket().upload_from_stream(
+        filename,
+        contents,
+        metadata={
+            "content_type": ctype,
+            "article_slug": slug,
+            "kind": "article_image",
+        },
+    )
+    public_url = _public_article_image_url(filename)
+
+    now = datetime.now(timezone.utc).isoformat()
+    if kind == "cover":
+        await db.articles.update_one(
+            {"slug": slug},
+            {"$set": {"cover_image_url": public_url, "updated_at": now}},
+        )
+    else:
+        await db.articles.update_one(
+            {"slug": slug},
+            {"$push": {"gallery": public_url}, "$set": {"updated_at": now}},
+        )
+    return {"url": public_url, "kind": kind}
+
+
+@api_router.delete(
+    "/admin/articles/{slug}/images",
+    dependencies=[Depends(get_admin_user)],
+)
+async def admin_delete_article_image(slug: str, url: str):
+    """Remove a single image URL from cover_image_url or gallery[]. Also
+    deletes the underlying GridFS blob if it lives in our article bucket."""
+    article = await db.articles.find_one(
+        {"slug": slug}, {"_id": 0, "cover_image_url": 1, "gallery": 1}
+    )
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+
+    now = datetime.now(timezone.utc).isoformat()
+    if article.get("cover_image_url") == url:
+        await db.articles.update_one(
+            {"slug": slug},
+            {"$set": {"cover_image_url": "", "updated_at": now}},
+        )
+    if url in (article.get("gallery") or []):
+        await db.articles.update_one(
+            {"slug": slug},
+            {"$pull": {"gallery": url}, "$set": {"updated_at": now}},
+        )
+
+    if url.startswith("/api/uploads/article-images/"):
+        filename = url.rsplit("/", 1)[-1]
+        try:
+            file_doc = await db["article_images.files"].find_one(
+                {"filename": filename}, {"_id": 1}
+            )
+            if file_doc:
+                await _article_images_bucket().delete(file_doc["_id"])
+        except Exception:  # noqa: BLE001
+            logger.exception("Failed to delete article image blob %s", filename)
+    return {"ok": True}
+
+
+@api_router.post(
+    "/admin/articles/{slug}/translate",
+    dependencies=[Depends(get_admin_user)],
+)
+async def admin_translate_article(slug: str):
+    """Manual trigger — translates any empty (title/excerpt/body) × lang
+    fields. Fast for admins who want to see translations appear right
+    after creating an article (synchronous, returns when done)."""
+    existing = await db.articles.find_one({"slug": slug}, {"_id": 1})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Article not found")
+    result = await fill_missing_article_translations(db, slug)
+    return result
+
+
+async def _translate_single_article(slug: str) -> None:
+    """Background helper used by admin create/update — same behavior as
+    `fill_missing_article_translations` but swallows errors so a failing
+    LLM call never bubbles back to the admin."""
+    try:
+        await fill_missing_article_translations(db, slug)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Background article translate failed for %s: %s", slug, exc)
 
 
 # Article auto-seed -----------------------------------------------------------
