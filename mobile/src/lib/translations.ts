@@ -36,6 +36,15 @@ interface Dict {
     showing_count: string;
     pull_to_refresh: string;
     countdown_label: string;
+    duration_label: string;
+    audience_label: string;
+    style_label: string;
+    description_more: string;
+    description_close: string;
+  };
+  duration: {
+    one: string;
+    n: string;
   };
   countdown: {
     today: string;
@@ -296,7 +305,13 @@ const baseTranslations: Partial<Record<Lang, Dict>> = {
       showing_count: "{n} tapahtumaa",
       pull_to_refresh: "Vedä päivittääksesi",
       countdown_label: "TAPAHTUMAAN",
+      duration_label: "KESTO",
+      audience_label: "Yleisö",
+      style_label: "Tyyli",
+      description_more: "Lue lisää",
+      description_close: "Sulje",
     },
+    duration: { one: "1 päivä", n: "{n} päivää" },
     countdown: {
       today: "Tänään",
       tomorrow: "Huomenna",
@@ -579,7 +594,13 @@ const baseTranslations: Partial<Record<Lang, Dict>> = {
       showing_count: "{n} events",
       pull_to_refresh: "Pull to refresh",
       countdown_label: "STARTS IN",
+      duration_label: "DURATION",
+      audience_label: "Audience",
+      style_label: "Style",
+      description_more: "Read more",
+      description_close: "Close",
     },
+    duration: { one: "1 day", n: "{n} days" },
     countdown: {
       today: "Today",
       tomorrow: "Tomorrow",
@@ -854,7 +875,13 @@ const baseTranslations: Partial<Record<Lang, Dict>> = {
       showing_count: "{n} evenemang",
       pull_to_refresh: "Dra för att uppdatera",
       countdown_label: "BÖRJAR OM",
+      duration_label: "LÄNGD",
+      audience_label: "Publik",
+      style_label: "Stil",
+      description_more: "Läs mer",
+      description_close: "Stäng",
     },
+    duration: { one: "1 dag", n: "{n} dagar" },
     countdown: {
       today: "Idag",
       tomorrow: "Imorgon",

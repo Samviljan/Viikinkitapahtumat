@@ -80,3 +80,31 @@ export function countdownLabel(
   if (days === 1) return tr("countdown.tomorrow");
   return tr("countdown.days", { n: days });
 }
+
+/**
+ * Total whole days the event spans (1 = single-day, 2 = two-day, …).
+ * Returns null if start date is missing.
+ */
+export function durationDays(start?: string | null, end?: string | null): number | null {
+  const s = parseEventDate(start);
+  if (!s) return null;
+  const e = parseEventDate(end) || s;
+  s.setHours(0, 0, 0, 0);
+  e.setHours(0, 0, 0, 0);
+  return Math.round((e.getTime() - s.getTime()) / 86400000) + 1;
+}
+
+export function durationLabel(
+  days: number,
+  t?: (k: string, vars?: Record<string, string | number>) => string,
+): string {
+  const tr = t || ((k: string, vars?: Record<string, string | number>) => {
+    const fi: Record<string, string> = {
+      "duration.one": "1 päivä",
+      "duration.n": `${vars?.n} päivää`,
+    };
+    return fi[k] || k;
+  });
+  if (days === 1) return tr("duration.one");
+  return tr("duration.n", { n: days });
+}
