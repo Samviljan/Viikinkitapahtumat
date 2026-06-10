@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   Image,
   Linking,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -25,10 +26,14 @@ import { flagFor } from "@/src/lib/countries";
 import {
   countdownLabel,
   daysUntil,
+  durationDays,
+  durationLabel,
   formatDateRange,
 } from "@/src/lib/format";
 import { colors, radius, spacing, text } from "@/src/lib/theme";
 import { localized, useSettings } from "@/src/lib/i18n";
+
+const DESCRIPTION_PREVIEW_LINES = 5;
 
 export default function EventDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -55,7 +60,16 @@ export default function EventDetail() {
   const ev = event;
   const img = resolveImageUrl(ev.image_url);
   const cd = daysUntil(ev.start_date, ev.end_date);
+  const dur = durationDays(ev.start_date, ev.end_date);
   const gallery = (ev.gallery || []).map(resolveImageUrl).filter(Boolean) as string[];
+  const [descOpen, setDescOpen] = useState(false);
+
+  const titleText =
+    localized(ev as unknown as Record<string, unknown>, "title", lang) || ev.title_fi;
+  const descText =
+    localized(ev as unknown as Record<string, unknown>, "description", lang) ||
+    ev.description_fi ||
+    "";
 
   function openMap() {
     const q = encodeURIComponent(ev.location);
@@ -89,13 +103,38 @@ export default function EventDetail() {
       <View style={styles.body}>
         <View style={styles.metaRow}>
           <Text style={styles.flag}>{flagFor(ev.country)}</Text>
-          <Text style={text.overline}>
-            {t(`category.${ev.category}`).toUpperCase()}
-          </Text>
         </View>
-        <Text style={styles.title}>
-          {localized(ev as unknown as Record<string, unknown>, "title", lang) || ev.title_fi}
-        </Text>
+        <Text style={styles.title}>{titleText}</Text>
+
+        {/* Category / audience / fight style / duration badges — gives the
+            same classification surface as the web event detail page. */}
+        <View style={styles.badgeRow}>
+          <View style={styles.badgeCategory}>
+            <Text style={styles.badgeCategoryText}>
+              {t(`category.${ev.category}`).toUpperCase()}
+            </Text>
+          </View>
+          {ev.audience ? (
+            <View style={styles.badgeAudience}>
+              <Ionicons name="people-outline" size={11} color={colors.gold} />
+              <Text style={styles.badgeAudienceText}>{ev.audience}</Text>
+            </View>
+          ) : null}
+          {ev.fight_style ? (
+            <View style={styles.badgeStyle}>
+              <Ionicons name="flash-outline" size={11} color={colors.ember} />
+              <Text style={styles.badgeStyleText}>{ev.fight_style}</Text>
+            </View>
+          ) : null}
+          {dur !== null && dur > 1 ? (
+            <View style={styles.badgeDuration}>
+              <Ionicons name="time-outline" size={11} color={colors.stone} />
+              <Text style={styles.badgeDurationText}>
+                {durationLabel(dur, t)}
+              </Text>
+            </View>
+          ) : null}
+        </View>
 
         {cd !== null ? (
           <View style={styles.cdBadge}>
@@ -120,9 +159,28 @@ export default function EventDetail() {
           <Text style={styles.fact}>{ev.organizer}</Text>
         </View>
 
-        <Text style={styles.description}>
-          {localized(ev as unknown as Record<string, unknown>, "description", lang) || ev.description_fi}
-        </Text>
+        {/* Description preview — truncated to N lines, tap to open the
+            full text in a scrollable modal. */}
+        {descText ? (
+          <Pressable
+            testID="desc-preview"
+            onPress={() => setDescOpen(true)}
+            style={({ pressed }) => [
+              styles.descPreview,
+              pressed && { opacity: 0.85 },
+            ]}
+          >
+            <Text
+              style={styles.descPreviewText}
+              numberOfLines={DESCRIPTION_PREVIEW_LINES}
+            >
+              {descText}
+            </Text>
+            <Text style={styles.descPreviewMore}>
+              {t("home.description_more")} →
+            </Text>
+          </Pressable>
+        ) : null}
 
         <View style={styles.actions}>
           <Pressable
@@ -197,6 +255,45 @@ export default function EventDetail() {
           </View>
         ) : null}
       </View>
+
+      {/* Description modal — full text rendered with scroll, dismiss on
+          backdrop tap or × button. */}
+      <Modal
+        visible={descOpen}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setDescOpen(false)}
+      >
+        <Pressable
+          style={modalStyles.backdrop}
+          onPress={() => setDescOpen(false)}
+        >
+          <Pressable
+            style={modalStyles.sheet}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={modalStyles.header}>
+              <Text style={modalStyles.title} numberOfLines={2}>
+                {titleText}
+              </Text>
+              <Pressable
+                onPress={() => setDescOpen(false)}
+                style={modalStyles.closeBtn}
+                hitSlop={12}
+                testID="desc-modal-close"
+              >
+                <Ionicons name="close" size={22} color={colors.bone} />
+              </Pressable>
+            </View>
+            <ScrollView
+              style={modalStyles.scroll}
+              contentContainerStyle={{ paddingBottom: spacing.lg }}
+            >
+              <Text style={modalStyles.body}>{descText}</Text>
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ScrollView>
   );
 }
@@ -310,6 +407,98 @@ const styles = StyleSheet.create({
     lineHeight: 26,
     marginBottom: spacing.xl,
   },
+  badgeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: spacing.lg,
+  },
+  badgeCategory: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: "rgba(200,73,44,0.55)",
+    backgroundColor: "rgba(200,73,44,0.12)",
+  },
+  badgeCategoryText: {
+    color: colors.ember,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.2,
+  },
+  badgeAudience: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: "rgba(201,161,74,0.5)",
+    backgroundColor: "rgba(201,161,74,0.1)",
+  },
+  badgeAudienceText: {
+    color: colors.gold,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  badgeStyle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: "rgba(200,73,44,0.4)",
+    backgroundColor: "rgba(200,73,44,0.08)",
+  },
+  badgeStyleText: {
+    color: colors.ember,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  badgeDuration: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.edge,
+    backgroundColor: colors.surface,
+  },
+  badgeDurationText: {
+    color: colors.stone,
+    fontSize: 11,
+    fontWeight: "600",
+    letterSpacing: 0.5,
+  },
+  descPreview: {
+    marginBottom: spacing.xl,
+    padding: spacing.md,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: "rgba(201,161,74,0.22)",
+    backgroundColor: "rgba(0,0,0,0.22)",
+  },
+  descPreviewText: {
+    color: colors.bone,
+    fontSize: 15,
+    lineHeight: 23,
+  },
+  descPreviewMore: {
+    marginTop: 8,
+    color: colors.gold,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
   gallerySection: { marginTop: spacing.lg, gap: spacing.md },
   galleryImg: {
     width: 200,
@@ -318,5 +507,52 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
     borderWidth: 1,
     borderColor: colors.edge,
+  },
+});
+
+const modalStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.78)",
+    justifyContent: "center",
+    paddingHorizontal: spacing.md,
+  },
+  sheet: {
+    backgroundColor: "#0F0B08",
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: "rgba(201,161,74,0.4)",
+    maxHeight: "82%",
+    padding: spacing.md,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+    paddingBottom: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(201,161,74,0.2)",
+  },
+  title: {
+    ...text.h2,
+    fontSize: 18,
+    lineHeight: 22,
+    flex: 1,
+    color: colors.bone,
+  },
+  closeBtn: {
+    width: 30,
+    height: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.sm,
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
+  scroll: { maxHeight: "78%" },
+  body: {
+    color: colors.bone,
+    fontSize: 15,
+    lineHeight: 24,
   },
 });
