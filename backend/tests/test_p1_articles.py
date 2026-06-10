@@ -1,14 +1,16 @@
 """
-P1: Articles — list + detail.
+P1: Articles — list + detail + beta feedback.
 
-The intro article is auto-seeded on backend startup with 2 Gemini-generated
-hero images. These tests verify the endpoints are wired correctly and the
-seeded article is accessible at the expected slug.
+The intro article and beta-tester article are auto-seeded on backend
+startup with Gemini-generated hero images. These tests verify the
+endpoints are wired correctly, both seeded articles are accessible,
+and the beta feedback submission flow works.
 """
 import pytest
 
 
 SEEDED_SLUG = "mita-historianelavoitystapahtumassa-tapahtuu"
+BETA_SLUG = "liity-mobiilisovelluksen-beta-testaajaksi"
 
 
 class TestArticles:
@@ -84,3 +86,35 @@ class TestArticles:
             assert img_r.headers.get("content-type", "").startswith("image/"), (
                 f"image {url} bad content-type {img_r.headers.get('content-type')!r}"
             )
+
+
+class TestBetaArticleAndFeedback:
+    def test_beta_article_present(self, base_url, api_client):
+        r = api_client.get(f"{base_url}/api/articles/{BETA_SLUG}", timeout=30)
+        assert r.status_code == 200
+        a = r.json()
+        assert a["slug"] == BETA_SLUG
+        assert a["title_fi"].startswith("Liity mobiilisovelluksen")
+        # This is the key flag the frontend checks to render the form
+        assert a.get("feedback_form_type") == "beta_app", (
+            "feedback_form_type must be 'beta_app' so the form renders"
+        )
+        # Body contains the markdown-style headings the renderer understands
+        assert "## Miksi beta-testaajia tarvitaan?" in a["body_fi"]
+        assert "- asentaa sovelluksen Android-puhelimeen" in a["body_fi"]
+
+    def test_beta_feedback_rejects_empty(self, base_url, api_client):
+        r = api_client.post(
+            f"{base_url}/api/feedback/beta-app",
+            json={"message": ""},
+            timeout=15,
+        )
+        assert r.status_code == 422
+
+    def test_beta_feedback_rejects_invalid_email(self, base_url, api_client):
+        r = api_client.post(
+            f"{base_url}/api/feedback/beta-app",
+            json={"message": "Hyvä!", "email": "not-an-email"},
+            timeout=15,
+        )
+        assert r.status_code == 422

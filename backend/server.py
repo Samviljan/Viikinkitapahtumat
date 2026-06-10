@@ -26,7 +26,7 @@ from fastapi.responses import PlainTextResponse, RedirectResponse, FileResponse,
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
-from pydantic import BaseModel, Field, EmailStr, ConfigDict
+from pydantic import BaseModel, Field, EmailStr, ConfigDict, field_validator
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 import pytz
@@ -507,6 +507,7 @@ class ArticleOut(BaseModel):
     published_at: str
     created_at: str
     updated_at: Optional[str] = None
+    feedback_form_type: Optional[str] = None  # e.g. "beta_app" → render form on detail page
 
 
 
@@ -4419,6 +4420,7 @@ async def get_article(slug: str):
 
 # Article auto-seed -----------------------------------------------------------
 _REENACTMENT_INTRO_SLUG = "mita-historianelavoitystapahtumassa-tapahtuu"
+_BETA_TESTER_SLUG = "liity-mobiilisovelluksen-beta-testaajaksi"
 
 _REENACTMENT_INTRO_FI = (
     "Historianelävöitystapahtuma vie kävijän hetkeksi menneisyyteen. Tapahtumissa "
@@ -4571,6 +4573,249 @@ async def _seed_intro_article() -> None:
         _REENACTMENT_INTRO_SLUG,
         len(image_urls),
     )
+
+
+_BETA_TESTER_BODY_FI = (
+    "Löydä viikinki-, rautakausi-, keskiaika- ja historianelävöitystapahtumat helposti yhdestä paikasta.\n\n"
+    "viikinkitapahtumat.fi-mobiilisovellus tuo sivuston tapahtumatiedot kätevästi puhelimeen. Sovelluksen avulla voit selata viikinki-, rautakausi-, keskiaika- ja historianelävöitystapahtumia, löytää kiinnostavia tapahtumia ja tarkistaa tapahtumien perustiedot helposti myös liikkeellä ollessa.\n\n"
+    "Sovellus on tarkoitettu kaikille, joita kiinnostavat historia, elävöitys, viikinkiaika, rautakausi, keskiaika, markkinat, käsityöt, museotapahtumat ja historialliset elämykset. Se sopii sekä tapahtumissa käyville, harrastajille, elävöittäjille että järjestäjille, jotka haluavat seurata, mitä Suomessa tapahtuu.\n\n"
+    "## Miksi beta-testaajia tarvitaan?\n\n"
+    "Sovellus on parhaillaan testivaiheessa. Ennen laajempaa julkaisua haluan varmistaa, että sovellus toimii hyvin erilaisilla Android-puhelimilla ja että tapahtumien selaaminen on mahdollisimman helppoa.\n\n"
+    "Beta-testaajien palaute auttaa kehittämään sovellusta paremmaksi. Testaajien avulla voidaan huomata esimerkiksi käyttöliittymän epäselvyydet, puuttuvat tiedot, toimivuusongelmat tai ideat, jotka tekevät sovelluksesta hyödyllisemmän.\n\n"
+    "## Miten beta-testaajaksi pääsee?\n\n"
+    "Beta-testaajaksi pääset lähettämällä vapaamuotoisen sähköpostin osoitteeseen admin@viikinkitapahtumat.fi.\n\n"
+    "Kirjoita viestiin, että haluat mukaan viikinkitapahtumat.fi-mobiilisovelluksen beta-testaukseen. Lisää viestiin myös se Gmail-osoite, jolla käytät Google Playta, sillä Google Playn testiryhmään voidaan lisätä vain Google-tiliin liitetty sähköpostiosoite.\n\n"
+    "Kun sinut on lisätty testiryhmään, saat ohjeet sovelluksen asentamiseen Google Playn kautta. Testaus onnistuu Android-laitteella.\n\n"
+    "## Mitä testaajalta pyydetään?\n\n"
+    "Testaaminen ei vaadi teknistä osaamista. Riittää, että käytät sovellusta tavallisen käyttäjän näkökulmasta ja kerrot, miltä se tuntuu.\n\n"
+    "Toivon, että beta-testaaja:\n\n"
+    "- asentaa sovelluksen Android-puhelimeen\n"
+    "- avaa tapahtumalistan\n"
+    "- etsii yhden tai useamman kiinnostavan tapahtuman\n"
+    "- tarkistaa, löytyvätkö tapahtuman nimi, aika, paikka ja kuvaus helposti\n"
+    "- kertoo, jos jokin kohta tuntuu epäselvältä\n"
+    "- ilmoittaa, jos sovellus ei toimi odotetusti\n"
+    "- lähettää lyhyen palautteen palautelomakkeella\n\n"
+    "Erityisen arvokasta palautetta on se, löysitkö sovelluksesta tapahtuman, johon voisit oikeasti mennä, ja oliko tapahtuman tiedot helppo ymmärtää.\n\n"
+    "## Kuinka kauan testaus kestää?\n\n"
+    "Yksittäinen testikerta vie noin 5–10 minuuttia. Voit kuitenkin käyttää sovellusta pidempään ja palata siihen myöhemmin, kun uusia tapahtumia lisätään.\n\n"
+    "Beta-testijakson aikana toivon, että testaajat pitävät sovelluksen asennettuna vähintään kahden viikon ajan. Näin voidaan paremmin seurata, miten sovellus toimii käytössä ja miten tapahtumatiedot palvelevat käyttäjiä ajan mittaan.\n\n"
+    "## Anna palautetta\n\n"
+    "Kun olet kokeillut sovellusta, lähetä palautteesi alla olevan palautelomakkeen kautta.\n\n"
+    "Voit kertoa esimerkiksi:\n\n"
+    "- mikä sovelluksessa toimi hyvin\n"
+    "- mikä oli epäselvää\n"
+    "- löysitkö kiinnostavan tapahtuman\n"
+    "- puuttuuko sovelluksesta jokin tapahtuma\n"
+    "- toimiko sovellus puhelimellasi ongelmitta\n"
+    "- mitä ominaisuutta toivoisit seuraavaksi\n\n"
+    "Myös lyhyt palaute auttaa. Yksi huomio voi riittää tekemään sovelluksesta paremman kaikille käyttäjille.\n\n"
+    "## Kiitos avusta\n\n"
+    "viikinkitapahtumat.fi ja sen mobiilisovellus rakentuvat harrastajien, tapahtumakävijöiden ja järjestäjien tarpeisiin. Beta-testaajana autat tekemään palvelusta hyödyllisemmän kaikille, jotka etsivät viikinki-, rautakausi-, keskiaika- ja historianelävöitystapahtumia.\n\n"
+    "Tervetuloa mukaan testaamaan!"
+)
+
+_BETA_IMAGE_PROMPT = (
+    "Atmospheric photograph of a person's hand holding a modern smartphone "
+    "outdoors at a viking reenactment market. The phone screen shows a clean "
+    "event calendar app interface (no readable text). In the soft-focus "
+    "background: linen tents, costumed reenactors, glowing campfire, golden "
+    "hour light. Photographic realism, cinematic depth of field, 1600x900 aspect"
+)
+
+
+async def _seed_beta_tester_article() -> None:
+    """Insert the second seeded article (beta tester recruitment) + generate
+    1 hero image. Idempotent."""
+    existing = await db.articles.find_one({"slug": _BETA_TESTER_SLUG}, {"id": 1})
+    if existing:
+        return
+
+    api_key = os.environ.get("EMERGENT_LLM_KEY")
+    cover_url = ""
+    if api_key:
+        try:
+            from emergentintegrations.llm.chat import LlmChat, UserMessage  # noqa: WPS433
+            chat = LlmChat(
+                api_key=api_key,
+                session_id=f"article-img-{_BETA_TESTER_SLUG}-0",
+                system_message=(
+                    "Generate atmospheric, photographic images bridging modern "
+                    "mobile technology with Nordic historical reenactment "
+                    "events. Avoid text overlays."
+                ),
+            )
+            chat.with_model(
+                "gemini", "gemini-3.1-flash-image-preview"
+            ).with_params(modalities=["image", "text"])
+            try:
+                _, images = await chat.send_message_multimodal_response(
+                    UserMessage(text=_BETA_IMAGE_PROMPT)
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Beta article image gen failed: %s", exc)
+                images = []
+            if images:
+                img = images[0]
+                mime = img.get("mime_type") or "image/png"
+                ext = ".png" if "png" in mime else (".jpg" if "jpeg" in mime else ".png")
+                try:
+                    image_bytes = base64.b64decode(img["data"])
+                    filename = (
+                        f"article_{_BETA_TESTER_SLUG[:24]}_"
+                        f"0_{uuid.uuid4().hex[:8]}{ext}"
+                    )
+                    await _article_images_bucket().upload_from_stream(
+                        filename,
+                        image_bytes,
+                        metadata={
+                            "content_type": mime,
+                            "article_slug": _BETA_TESTER_SLUG,
+                            "kind": "article_image",
+                        },
+                    )
+                    cover_url = _public_article_image_url(filename)
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("Beta article image save failed: %s", exc)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Beta article seed image gen aborted: %s", exc)
+
+    now = datetime.now(timezone.utc).isoformat()
+    article = {
+        "id": str(uuid.uuid4()),
+        "slug": _BETA_TESTER_SLUG,
+        "title_fi": "Liity mobiilisovelluksen beta-testaajaksi",
+        "title_en": "Become a mobile app beta tester",
+        "title_sv": "Bli beta-testare för mobilappen",
+        "title_da": "Bliv beta-tester af mobilappen",
+        "title_de": "Werde Beta-Tester der mobilen App",
+        "title_et": "Hakka mobiilirakenduse beeta-testijaks",
+        "title_pl": "Zostań beta-testerem aplikacji mobilnej",
+        "excerpt_fi": (
+            "Auta tekemään viikinkitapahtumat.fi-mobiilisovelluksesta parempi — "
+            "ilmoittaudu Android-beta-testaajaksi ja anna palautetta."
+        ),
+        "excerpt_en": "",
+        "excerpt_sv": "",
+        "excerpt_da": "",
+        "excerpt_de": "",
+        "excerpt_et": "",
+        "excerpt_pl": "",
+        "body_fi": _BETA_TESTER_BODY_FI,
+        "body_en": "",
+        "body_sv": "",
+        "body_da": "",
+        "body_de": "",
+        "body_et": "",
+        "body_pl": "",
+        "cover_image_url": cover_url,
+        "gallery": [],
+        "published_at": now,
+        "created_at": now,
+        "updated_at": now,
+        "feedback_form_type": "beta_app",
+    }
+    await db.articles.insert_one(article.copy())
+    logger.info(
+        "Seeded beta tester article (slug=%s, cover=%s)",
+        _BETA_TESTER_SLUG,
+        bool(cover_url),
+    )
+
+
+# Article feedback (open form posted by visitors of the beta-tester article)
+class BetaFeedbackIn(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    name: Optional[str] = ""
+    email: Optional[EmailStr] = None
+    device: Optional[str] = ""
+    message: str
+
+    @field_validator("message")
+    @classmethod
+    def _msg_nonempty(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("message is required")
+        if len(v) > 5000:
+            raise ValueError("message too long (max 5000 chars)")
+        return v
+
+
+@api_router.post("/feedback/beta-app")
+async def submit_beta_feedback(payload: BetaFeedbackIn, request: Request):
+    """Public — anyone reading the beta-tester article can submit feedback.
+    Stored in `beta_app_feedback` for the admin to read; an email is also
+    forwarded to the admin so they don't need to check the DB to see new
+    submissions. Lightweight rate limit: 1 submission per minute per IP."""
+    # Rate-limit by client IP via a tiny in-memory deque-of-timestamps. The
+    # form is not gating anything critical, so this is enough to deter spam.
+    ip = (
+        request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+        or (request.client.host if request.client else "unknown")
+    )
+    if not hasattr(submit_beta_feedback, "_last_ip"):
+        submit_beta_feedback._last_ip = {}
+    now_ts = datetime.now(timezone.utc).timestamp()
+    last = submit_beta_feedback._last_ip.get(ip, 0)
+    if now_ts - last < 60:
+        raise HTTPException(
+            status_code=429, detail="Please wait before sending another message"
+        )
+    submit_beta_feedback._last_ip[ip] = now_ts
+
+    doc = {
+        "id": str(uuid.uuid4()),
+        "name": (payload.name or "").strip()[:120],
+        "email": (str(payload.email) if payload.email else ""),
+        "device": (payload.device or "").strip()[:120],
+        "message": payload.message,
+        "ip": ip,
+        "user_agent": (request.headers.get("user-agent") or "")[:300],
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.beta_app_feedback.insert_one(doc.copy())
+
+    # Email forward — best-effort, do not fail the request if SMTP is down.
+    admin_email = os.environ.get(
+        "ADMIN_EMAIL", "admin@viikinkitapahtumat.fi"
+    ).lower()
+    try:
+        from email_service import send_email as svc_send_email
+        site = "https://viikinkitapahtumat.fi"
+        subject = "Uutta beta-palautetta mobiilisovelluksesta"
+        contact_line = (
+            f"<div style='color:#8E8276;font-size:12px;margin-top:18px;'>"
+            f"Yhteystiedot: {html_escape(doc['email'] or 'ei annettu')}"
+            f"{' · ' + html_escape(doc['name']) if doc['name'] else ''}"
+            f"{' · ' + html_escape(doc['device']) if doc['device'] else ''}"
+            f"</div>"
+        )
+        html = (
+            f"<div style='font-family:Georgia,serif;background:#141111;color:#E8E2D5;padding:24px;'>"
+            f"<div style='max-width:580px;margin:0 auto;background:#1A1614;border:1px solid #352A23;padding:28px;'>"
+            f"<div style='font-size:11px;letter-spacing:1.6px;color:#C19C4D;text-transform:uppercase;'>Beta-palaute</div>"
+            f"<h1 style='font-family:Georgia,serif;color:#E8E2D5;margin:8px 0 16px;font-size:20px;'>"
+            f"viikinkitapahtumat.fi mobiilisovellus</h1>"
+            f"<div style='white-space:pre-wrap;line-height:1.55;color:#E8E2D5;'>"
+            f"{html_escape(doc['message'])}</div>"
+            f"{contact_line}"
+            f"<div style='font-size:11px;color:#8E8276;margin-top:18px;'>"
+            f"Lähetetty osoitteen <a href='{site}' style='color:#C19C4D;'>"
+            f"viikinkitapahtumat.fi</a> beta-testaajan artikkelin kautta."
+            f"</div></div></div>"
+        )
+        try:
+            await svc_send_email(
+                admin_email, subject, html,
+                reply_to=(doc["email"] or None),
+            )
+        except TypeError:
+            await svc_send_email(admin_email, subject, html)
+    except Exception:  # noqa: BLE001
+        logger.exception("Beta feedback admin email failed (DB row still saved)")
+
+    return {"ok": True}
 
 
 # -----------------------------------------------------------------------------
@@ -6315,6 +6560,10 @@ async def on_startup():
         await _seed_intro_article()
     except Exception as exc:  # noqa: BLE001
         logger.warning("Intro article seed failed (will retry on next boot): %s", exc)
+    try:
+        await _seed_beta_tester_article()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Beta tester article seed failed (will retry on next boot): %s", exc)
 
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@viikinkitapahtumat.fi").lower()
     admin_password = os.environ.get("ADMIN_PASSWORD")

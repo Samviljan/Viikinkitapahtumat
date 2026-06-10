@@ -80,6 +80,28 @@
     "published": "Published",
     "gallery": "Image gallery"
   },
+  "beta_feedback": {
+    "eyebrow": "Feedback form",
+    "title": "Send feedback about the mobile app",
+    "sub": "Tell us briefly what worked and what didn't. One note is enough.",
+    "field_name": "Name (optional)",
+    "field_email": "Email (optional)",
+    "field_device": "Device (e.g. Pixel 8, Samsung S23)",
+    "field_message": "Your feedback",
+    "placeholder_name": "E.g. Maija M.",
+    "placeholder_email": "maija@example.com",
+    "placeholder_device": "Pixel 7 · Android 14",
+    "placeholder_message": "What worked well? What was unclear? Did you find an interesting event?",
+    "submit": "Send feedback",
+    "submitting": "Sending…",
+    "success_title": "Thanks for your feedback!",
+    "success_body": "Your feedback has been received. Every note helps make the app better.",
+    "success_toast": "Feedback sent — thank you!",
+    "error_message_required": "Please write your feedback before submitting.",
+    "error_rate_limited": "Please wait a moment before sending another message.",
+    "error_invalid_email": "Please check your email address.",
+    "error_generic": "Submission failed. Please try again in a moment."
+  },
   "submit": {
     "title": "Submit an event",
     "sub": "Your submission will appear after admin approval.",

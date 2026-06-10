@@ -1108,3 +1108,13 @@ See `/app/memory/test_credentials.md`.
 - Pytest: `tests/test_p1_articles.py` (6 tests, all green) — list, detail, 404, image accessibility.
 
 
+
+## 2026-06-10 — Second article: beta tester recruitment + feedback form (DONE)
+- Added second auto-seeded article `liity-mobiilisovelluksen-beta-testaajaksi` covering the mobile-app beta program. One Gemini-generated cover image (hand holding smartphone at viking event).
+- New field on `Article` model: `feedback_form_type: Optional[str]` — set to `"beta_app"` on this article so the frontend renders the form.
+- `ArticleDetail.jsx` now supports lightweight Markdown rendering: `## Heading` → styled `<h2>`, consecutive `- ` lines → bullet `<ul>`. Keeps article authoring sane without pulling in a Markdown library.
+- New `BetaFeedbackForm` component (4 inputs: name, email, device, message — last one required). Posts to:
+- New backend endpoint `POST /api/feedback/beta-app` — validates message, rate-limits 1/min per IP, stores in `beta_app_feedback` collection, emails admin via existing email_service.
+- Pytest: extended `tests/test_p1_articles.py` to 9 tests total (article presence, feedback validation paths). All passing.
+- Translation keys added: `beta_feedback.*` in fi.json and en.json (other langs fall back to en/fi).
+

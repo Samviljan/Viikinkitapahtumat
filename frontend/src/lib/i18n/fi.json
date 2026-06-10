@@ -81,6 +81,28 @@
     "published": "Julkaistu",
     "gallery": "Kuvagalleria"
   },
+  "beta_feedback": {
+    "eyebrow": "Palautelomake",
+    "title": "Anna palautetta mobiilisovelluksesta",
+    "sub": "Kerro lyhyesti millainen kokemus oli. Yksikin huomio auttaa.",
+    "field_name": "Nimi (vapaaehtoinen)",
+    "field_email": "Sähköposti (vapaaehtoinen)",
+    "field_device": "Laite (esim. Pixel 8, Samsung S23)",
+    "field_message": "Palautteesi",
+    "placeholder_name": "Esim. Maija M.",
+    "placeholder_email": "maija@example.com",
+    "placeholder_device": "Pixel 7 · Android 14",
+    "placeholder_message": "Mikä toimi hyvin? Mikä oli epäselvää? Löysitkö kiinnostavan tapahtuman?",
+    "submit": "Lähetä palaute",
+    "submitting": "Lähetetään…",
+    "success_title": "Kiitos palautteesta!",
+    "success_body": "Palaute on vastaanotettu. Jokainen huomio auttaa kehittämään sovellusta paremmaksi.",
+    "success_toast": "Palaute lähetetty — kiitos!",
+    "error_message_required": "Kirjoita palautteesi ennen lähettämistä.",
+    "error_rate_limited": "Odota hetki ennen seuraavan palautteen lähettämistä.",
+    "error_invalid_email": "Tarkista sähköpostiosoite.",
+    "error_generic": "Lähetys epäonnistui. Yritä hetken kuluttua uudelleen."
+  },
   "submit": {
     "title": "Ilmoita tapahtuma",
     "sub": "Lähettämäsi tapahtuma julkaistaan ylläpidon hyväksynnän jälkeen.",

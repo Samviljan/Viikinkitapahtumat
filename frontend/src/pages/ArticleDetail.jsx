@@ -5,6 +5,7 @@ import { useDocumentSeo } from "@/lib/seo";
 import { api } from "@/lib/api";
 import { resolveImageUrl } from "@/lib/images";
 import { ChevronLeft, Calendar } from "lucide-react";
+import BetaFeedbackForm from "@/components/BetaFeedbackForm";
 
 function formatPublishedDate(iso, lang) {
   if (!iso) return "";
@@ -14,6 +15,44 @@ function formatPublishedDate(iso, lang) {
     year: "numeric",
     month: "long",
     day: "numeric",
+  });
+}
+
+/**
+ * Lightweight Markdown-ish renderer for article bodies. Supports:
+ *   - `## Heading` → <h2>
+ *   - Lines starting with `- ` → bullet list (consecutive lines grouped)
+ *   - Blank line separates blocks; otherwise paragraphs.
+ * Deliberately avoids pulling in a full Markdown library — articles are
+ * authored in-house so the syntax surface stays predictable.
+ */
+function renderArticleBody(body) {
+  const blocks = body.split(/\n\n+/);
+  return blocks.map((block, blockIdx) => {
+    const lines = block.split("\n").map((l) => l.trimEnd());
+    if (lines[0]?.startsWith("## ")) {
+      return (
+        <h2
+          key={blockIdx}
+          className="font-serif text-2xl sm:text-3xl text-viking-gold mt-8 mb-2 leading-tight"
+        >
+          {lines[0].slice(3)}
+        </h2>
+      );
+    }
+    if (lines.every((l) => l.startsWith("- "))) {
+      return (
+        <ul
+          key={blockIdx}
+          className="list-disc list-outside pl-5 space-y-1.5 text-base sm:text-lg"
+        >
+          {lines.map((l, i) => (
+            <li key={i}>{l.slice(2)}</li>
+          ))}
+        </ul>
+      );
+    }
+    return <p key={blockIdx}>{block}</p>;
   });
 }
 
@@ -139,11 +178,11 @@ export default function ArticleDetail() {
               className="font-serif text-lg text-viking-bone leading-relaxed space-y-5"
               data-testid="article-body"
             >
-              {body.split("\n\n").map((para, idx) => (
-                <p key={idx}>{para}</p>
-              ))}
+              {renderArticleBody(body)}
             </div>
           )}
+
+          {article.feedback_form_type === "beta_app" && <BetaFeedbackForm />}
 
           {gallery.length > 0 && (
             <div className="mt-10" data-testid="article-gallery">
