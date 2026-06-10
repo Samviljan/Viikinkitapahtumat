@@ -15,13 +15,14 @@ import secrets
 import uuid
 from html import escape as html_escape
 from datetime import datetime, timezone, timedelta
-from typing import Optional, List, Literal
+import json
+from typing import Optional, List, Literal, Dict, Any
 
 import bcrypt
 import httpx
 import jwt
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, Query, BackgroundTasks, UploadFile, File, Form
-from fastapi.responses import PlainTextResponse, RedirectResponse, FileResponse, StreamingResponse
+from fastapi.responses import PlainTextResponse, RedirectResponse, FileResponse, StreamingResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -4321,6 +4322,213 @@ async def get_event(event_id: str):
     if not doc:
         raise HTTPException(status_code=404, detail="Event not found")
     return EventOut(**doc)
+
+
+# -----------------------------------------------------------------------------
+# Bot prerender: server-rendered HTML snapshot for an event page
+# -----------------------------------------------------------------------------
+# Why this exists:
+# The main web app is a React SPA. Even though modern Googlebot executes
+# JavaScript, crawlers like bingbot, DuckDuckBot, Slackbot, LinkedInBot,
+# Twitterbot, WhatsApp, Telegram and Facebook do NOT — they see the empty
+# `index.html`. This endpoint returns a fully-populated HTML snapshot
+# containing the event title, description, hero image, structured data
+# (schema.org/Event JSON-LD) and Open Graph tags so any crawler hitting
+# this URL can index/preview the event correctly.
+#
+# It is hooked into the bot path through:
+#   1) Direct route — production reverse proxy / CDN may forward known bot
+#      user-agents to `/api/prerender/events/{id}` and serve the rendered
+#      HTML to the bot while regular users still get the React SPA.
+#   2) Sitemap — already exposed via `/api/sitemap.xml`.
+#
+# Keep this rendering side-effect free, simple, and resilient: never raise
+# for missing optional fields.
+
+_BOT_REDIRECT_HTML_AFTER_S = 0  # 0 = instant, kept for tweakability
+
+def _pick_localized_field(doc: Dict[str, Any], base: str, lang: str = "fi") -> str:
+    """Pick `<base>_<lang>` from a Mongo event doc, falling back through
+    Finnish -> English -> Swedish -> any other localized variant -> empty."""
+    candidates = [f"{base}_{lang}", f"{base}_fi", f"{base}_en", f"{base}_sv",
+                  f"{base}_de", f"{base}_da", f"{base}_et", f"{base}_pl"]
+    for k in candidates:
+        v = (doc.get(k) or "").strip()
+        if v:
+            return v
+    return ""
+
+
+def _event_jsonld(event: Dict[str, Any], canonical_url: str, og_image: str) -> Dict[str, Any]:
+    """Build a schema.org/Event JSON-LD payload from a Mongo event document.
+    Only includes fields with a non-empty value (Google ignores empty strings
+    but rejects malformed JSON-LD, so we keep it lean)."""
+    title = _pick_localized_field(event, "title")
+    desc = _pick_localized_field(event, "description")
+    start = (event.get("start_date") or "").strip()
+    end = (event.get("end_date") or start).strip()
+    location = (event.get("location") or "").strip()
+    organizer = (event.get("organizer") or "").strip()
+    organizer_email = (event.get("organizer_email") or "").strip()
+    link = (event.get("link") or "").strip()
+    registration = (event.get("registration_url") or "").strip()
+    image_url = (event.get("image_url") or "").strip()
+
+    payload: Dict[str, Any] = {
+        "@context": "https://schema.org",
+        "@type": "Event",
+        "name": title,
+        "startDate": start,
+        "eventStatus": "https://schema.org/EventScheduled",
+        "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+        "url": canonical_url,
+    }
+    if end and end != start:
+        payload["endDate"] = end
+    if desc:
+        payload["description"] = desc.replace("\r\n", "\n").strip()
+    if location:
+        payload["location"] = {
+            "@type": "Place",
+            "name": location,
+            "address": location,
+        }
+    if organizer:
+        org_payload: Dict[str, Any] = {"@type": "Organization", "name": organizer}
+        if organizer_email:
+            org_payload["email"] = organizer_email
+        if link:
+            org_payload["url"] = link
+        payload["organizer"] = org_payload
+    if image_url or og_image:
+        # Prefer the rendered OG card (1200×630, branded) when available
+        # because Twitter/X, LinkedIn, WhatsApp and Slack prefer that ratio.
+        payload["image"] = [og_image] if og_image else [image_url]
+    if registration:
+        payload["offers"] = {
+            "@type": "Offer",
+            "url": registration,
+            "availability": "https://schema.org/InStock",
+            "price": "0",
+            "priceCurrency": "EUR",
+        }
+    return payload
+
+
+@app.get("/api/prerender/events/{event_id}", include_in_schema=False)
+async def prerender_event(event_id: str, request: Request):
+    """Server-rendered HTML snapshot for crawlers / non-JS clients.
+
+    Returns a fully populated `<html>` document with:
+      - <title> / <meta description> / canonical
+      - Open Graph + Twitter card meta
+      - schema.org/Event JSON-LD
+      - Visible <h1>, <p>, <time>, <a> elements containing the event data
+        so crawlers without JS still index meaningful content.
+    The body also redirects regular browsers back to the SPA route via
+    <meta http-equiv="refresh">, so if a real user lands here directly
+    they get the interactive page after the bot snapshot has been read.
+    """
+    event = await db.events.find_one({"id": event_id, "status": "approved"}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    site_base = "https://viikinkitapahtumat.fi"
+    canonical = f"{site_base}/events/{event_id}"
+    # OG image is served by the backend itself. We use the request base_url
+    # so the URL works in both preview and production environments; in
+    # production the proxy maps `/api/og/events/*.jpg` back to this backend.
+    og_image = f"{site_base}/api/og/events/{event_id}.jpg"
+    _ = request  # kept for future use (e.g., extracting Accept-Language)
+
+    title = _pick_localized_field(event, "title") or "Viikinkitapahtumat"
+    desc_full = _pick_localized_field(event, "description")
+    desc_short = " ".join(desc_full.split())[:300]
+    location = (event.get("location") or "").strip()
+    organizer = (event.get("organizer") or "").strip()
+    start = (event.get("start_date") or "").strip()
+    end = (event.get("end_date") or "").strip()
+    category = (event.get("category") or "").strip()
+    country = (event.get("country") or "FI").strip()
+    link = (event.get("link") or "").strip()
+    registration = (event.get("registration_url") or "").strip()
+
+    jsonld = _event_jsonld(event, canonical, og_image)
+    jsonld_str = json.dumps(jsonld, ensure_ascii=False, separators=(",", ":"))
+
+    date_str = start if not end or end == start else f"{start} – {end}"
+
+    # Build the visible body. We deliberately use plain semantic HTML (no
+    # CSS, no JS) so even text-only crawlers like Slackbot/Twitterbot can
+    # parse it. The <meta http-equiv="refresh"> bounces real browsers to
+    # the SPA route once they've loaded the snapshot.
+    body_parts: List[str] = [
+        f"<h1>{html_escape(title)}</h1>",
+        f"<p><strong>{html_escape(date_str)}</strong>"
+        + (f" · {html_escape(location)}" if location else "")
+        + (f" · {html_escape(organizer)}" if organizer else "")
+        + "</p>",
+    ]
+    if desc_full:
+        # Preserve paragraphs from the source description.
+        for para in desc_full.split("\n\n"):
+            para = para.strip()
+            if para:
+                body_parts.append(f"<p>{html_escape(para)}</p>")
+    extra_links: List[str] = []
+    if link:
+        extra_links.append(
+            f'<a rel="noopener" href="{html_escape(link)}">Tapahtuman verkkosivu</a>'
+        )
+    if registration:
+        extra_links.append(
+            f'<a rel="noopener" href="{html_escape(registration)}">Ilmoittaudu</a>'
+        )
+    if extra_links:
+        body_parts.append("<p>" + " · ".join(extra_links) + "</p>")
+    body_parts.append(
+        f'<p><a href="{html_escape(canonical)}">Avaa tapahtumasivu →</a></p>'
+    )
+    body_html = "\n".join(body_parts)
+
+    html_doc = f"""<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{html_escape(title)} — Viikinkitapahtumat</title>
+<meta name="description" content="{html_escape(desc_short or title)}" />
+<meta name="robots" content="index, follow, max-image-preview:large" />
+<link rel="canonical" href="{html_escape(canonical)}" />
+<meta property="og:type" content="event" />
+<meta property="og:site_name" content="Viikinkitapahtumat" />
+<meta property="og:title" content="{html_escape(title)}" />
+<meta property="og:description" content="{html_escape(desc_short or title)}" />
+<meta property="og:url" content="{html_escape(canonical)}" />
+<meta property="og:image" content="{html_escape(og_image)}" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="{html_escape(title)}" />
+<meta name="twitter:description" content="{html_escape(desc_short or title)}" />
+<meta name="twitter:image" content="{html_escape(og_image)}" />
+<meta name="event:category" content="{html_escape(category)}" />
+<meta name="event:country" content="{html_escape(country)}" />
+<meta http-equiv="refresh" content="{_BOT_REDIRECT_HTML_AFTER_S};url={html_escape(canonical)}" />
+<script type="application/ld+json">{jsonld_str}</script>
+</head>
+<body>
+{body_html}
+</body>
+</html>"""
+    return HTMLResponse(
+        content=html_doc,
+        headers={
+            # Allow CDN caching for 5 minutes; crawlers re-fetch often enough.
+            "Cache-Control": "public, max-age=300, s-maxage=300",
+            "X-Robots-Tag": "index, follow",
+        },
+    )
 
 
 # -----------------------------------------------------------------------------

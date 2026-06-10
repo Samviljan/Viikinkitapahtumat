@@ -44,6 +44,52 @@ export default function EventDetail() {
   const ogBase = process.env.REACT_APP_BACKEND_URL || "";
   const ogImage = event?.id ? `${ogBase}/api/og/events/${event.id}.jpg` : undefined;
 
+  // schema.org/Event JSON-LD — emitted into <head> so Google can show this
+  // event as a rich result (date, location, image). We only build the
+  // payload once the event has loaded so we don't ship an incomplete blob.
+  const canonicalUrl = event ? `https://viikinkitapahtumat.fi/events/${event.id}` : undefined;
+  const jsonLd = event
+    ? {
+        "@context": "https://schema.org",
+        "@type": "Event",
+        name: title,
+        startDate: event.start_date || undefined,
+        endDate:
+          event.end_date && event.end_date !== event.start_date
+            ? event.end_date
+            : undefined,
+        eventStatus: "https://schema.org/EventScheduled",
+        eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+        url: canonicalUrl,
+        description: desc ? desc.replace(/\s+/g, " ").trim() : undefined,
+        location: event.location
+          ? {
+              "@type": "Place",
+              name: event.location,
+              address: event.location,
+            }
+          : undefined,
+        organizer: event.organizer
+          ? {
+              "@type": "Organization",
+              name: event.organizer,
+              email: event.organizer_email || undefined,
+              url: event.link || undefined,
+            }
+          : undefined,
+        image: ogImage ? [ogImage] : undefined,
+        offers: event.registration_url
+          ? {
+              "@type": "Offer",
+              url: event.registration_url,
+              availability: "https://schema.org/InStock",
+              price: "0",
+              priceCurrency: "EUR",
+            }
+          : undefined,
+      }
+    : undefined;
+
   useDocumentSeo({
     title: title ? `${title} — Viikinkitapahtumat` : undefined,
     description: desc
@@ -63,6 +109,7 @@ export default function EventDetail() {
       event?.category || "",
     ].filter(Boolean),
     type: "event",
+    jsonLd,
   });
 
   if (error) {

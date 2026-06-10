@@ -49,6 +49,7 @@ export function useDocumentSeo({
   image,
   keywords,
   type = "website",
+  jsonLd,
 } = {}) {
   useEffect(() => {
     const finalTitle = title || DEFAULT_TITLE;
@@ -110,5 +111,22 @@ export function useDocumentSeo({
       "twitter:description",
       finalDesc,
     );
-  }, [title, description, canonicalPath, image, keywords, type]);
+
+    // JSON-LD structured data. We tag our injected scripts so navigations
+    // between SPA routes replace the previous block instead of stacking.
+    const previous = document.head.querySelectorAll(
+      'script[type="application/ld+json"][data-seo-injected="true"]',
+    );
+    previous.forEach((el) => el.parentNode?.removeChild(el));
+    if (jsonLd) {
+      const docs = Array.isArray(jsonLd) ? jsonLd : [jsonLd];
+      docs.filter(Boolean).forEach((doc) => {
+        const el = document.createElement("script");
+        el.type = "application/ld+json";
+        el.setAttribute("data-seo-injected", "true");
+        el.text = JSON.stringify(doc);
+        document.head.appendChild(el);
+      });
+    }
+  }, [title, description, canonicalPath, image, keywords, type, jsonLd]);
 }

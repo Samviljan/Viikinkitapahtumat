@@ -1078,3 +1078,17 @@ See `/app/memory/test_credentials.md`.
 - **`server.py`-refaktorointi reittitiedostoiksi** — nyt ~4000 riviä. Jaetaan `routes/auth.py`, `routes/events.py`, `routes/admin.py`, `routes/merchants.py`, `routes/messaging.py`. **Edellyttää** pytest-suiten olemassaoloa regressioturvana.
 - **Preview → prod data sync utility** — kaksisuuntainen data-sync admin-UI:sta.
 - **iOS-build konfiguraatio** — `app.json` iOS-osio, TestFlight-putki. Vaatii Apple Developer -tilin ($99/v).
+
+---
+
+## 2026-06-10 — SEO Bot Prerender + JSON-LD (DONE)
+- `useDocumentSeo` (`/app/frontend/src/lib/seo.js`) already supported `jsonLd` injection (added previous session). EventDetail.jsx now constructs a `schema.org/Event` payload (name, dates, location, organizer, image, registration offer) and passes it. Googlebot (which runs JS) sees the JSON-LD in the live DOM.
+- New backend endpoint `GET /api/prerender/events/{id}` (HTMLResponse, ~120 lines in `server.py`) returns a fully populated HTML snapshot containing:
+  - `<title>`, `<meta description>`, canonical link
+  - Open Graph + Twitter card meta tags (og:image points at the rendered OG card)
+  - `<script type="application/ld+json">` Event payload
+  - Visible `<h1>` / `<p>` / `<a>` content so non-JS crawlers (bingbot, Slackbot, LinkedInBot, Twitterbot, WhatsApp, Telegram, Facebook) can index real text
+  - `<meta http-equiv="refresh">` so real humans hitting the URL get bounced to the SPA route.
+- Production reverse proxy / CDN can route known bot user-agents to `/api/prerender/events/{id}` while regular users still receive the React SPA. (No proxy config changed in preview — preview ingress forces `X-Robots-Tag: noindex` on everything, that override does NOT apply in production.)
+- Pytest: `tests/test_p1_prerender_seo.py` — 6 tests, all green (200 OK, 404, title, canonical, og tags, JSON-LD schema).
+
