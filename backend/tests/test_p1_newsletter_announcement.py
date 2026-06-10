@@ -59,6 +59,7 @@ def test_announcement_counts_active_subscribers(base_url, admin_client, mongo, p
     # Snapshot baseline of how many active subs exist
     baseline = mongo.newsletter_subscribers.count_documents({"status": "active"})
     seeded = _seed_subscriber(mongo, status="active")
+    _ = seeded  # baseline reference; assertion delta below makes use of it
     _ = _seed_subscriber(mongo, status="paused")  # should be ignored
 
     r = admin_client.post(

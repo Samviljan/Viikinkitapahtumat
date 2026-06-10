@@ -6,6 +6,7 @@ import { useDocumentSeo } from "@/lib/seo";
 import { Button } from "@/components/ui/button";
 import EventCard from "@/components/EventCard";
 import NextUpStrip from "@/components/NextUpStrip";
+import LatestArticlesStrip from "@/components/LatestArticlesStrip";
 import PageHero from "@/components/PageHero";
 import NewsletterSignup from "@/components/NewsletterSignup";
 import { Compass, Send, ShieldCheck } from "lucide-react";
@@ -89,6 +90,10 @@ export default function Home() {
       {loaded ? (
         <NextUpStrip events={upcoming} />
       ) : null}
+
+      {/* "Uutta sivustolla" — small strip linking the 1-2 newest articles
+          so users notice new editorial content right from the home page. */}
+      <LatestArticlesStrip limit={2} />
 
       {/* Featured */}
       <section className="mx-auto max-w-7xl px-4 sm:px-8 py-20" data-testid="featured-section">

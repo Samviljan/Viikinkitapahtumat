@@ -1118,3 +1118,11 @@ See `/app/memory/test_credentials.md`.
 - Pytest: extended `tests/test_p1_articles.py` to 9 tests total (article presence, feedback validation paths). All passing.
 - Translation keys added: `beta_feedback.*` in fi.json and en.json (other langs fall back to en/fi).
 
+
+
+## 2026-06-10 — Article translations (7 languages) + "What's new" home strip (DONE)
+- Extended `translation_service.py` with `fill_missing_article_translations()` and `sweep_missing_article_translations()` — mirrors the existing event-translation flow but operates on `(title, excerpt, body) × 7 langs`. Only fills empty fields, never overwrites.
+- Server startup now schedules a fire-and-forget background sweep that translates any newly seeded / manually added article into all 6 other languages via Claude Haiku 4.5 (Emergent LLM key).
+- Both seeded articles now have full localized title/excerpt/body for fi, en, sv, da, de, et, pl — verified via `/api/articles/{slug}` payloads.
+- New `LatestArticlesStrip` home-page component — surfaces the 2 newest articles as compact cards (cover + "Uusi" label + title + excerpt + "Lue artikkeli" + "Katso kaikki →"). Sits between the existing "Mitä seuraavaksi" event strip and the featured grid.
+- Translation keys `home.whats_new`, `home.view_all`, `home.new_label` added.

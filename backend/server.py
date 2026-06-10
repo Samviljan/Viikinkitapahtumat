@@ -44,7 +44,11 @@ from email_service import (
     mask_email,
 )
 from push_service import send_to_users as push_send_to_users
-from translation_service import fill_missing_translations, sweep_missing_translations
+from translation_service import (
+    fill_missing_translations,
+    sweep_missing_translations,
+    sweep_missing_article_translations,
+)
 
 
 # -----------------------------------------------------------------------------
@@ -6564,6 +6568,20 @@ async def on_startup():
         await _seed_beta_tester_article()
     except Exception as exc:  # noqa: BLE001
         logger.warning("Beta tester article seed failed (will retry on next boot): %s", exc)
+
+    # Translate any seeded/manually-added articles into the other 6 languages
+    # in the background. Best-effort; runs once per boot and is fully
+    # idempotent (only fills empty fields). We schedule it as a task so the
+    # startup phase isn't blocked by ~30-60s of Claude calls.
+    async def _bg_article_translate_sweep():
+        try:
+            result = await sweep_missing_article_translations(db, max_articles=10)
+            if result.get("fields_filled"):
+                logger.info("Article translation sweep done: %s", result)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Article translation sweep failed: %s", exc)
+
+    asyncio.create_task(_bg_article_translate_sweep())
 
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@viikinkitapahtumat.fi").lower()
     admin_password = os.environ.get("ADMIN_PASSWORD")

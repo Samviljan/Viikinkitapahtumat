@@ -117,7 +117,7 @@ def test_reminder_fires_at_exactly_7_days(mongo, p1_cleanup):
     # external services that may be unavailable in test env, but inbox + the
     # underlying _record_inbox_rows always run).
     logs = list(mongo.reminder_log.find({"event_id": eid}))
-    channels = {l["channel"] for l in logs}
+    channels = {row["channel"] for row in logs}
     assert "inbox" in channels, f"Expected inbox channel, got: {channels}"
     # We don't assert push_sent > 0 (no real device tokens) but the function
     # must at least have logged an attempt or skipped without raising.
@@ -183,5 +183,5 @@ def test_reminder_custom_days_before(mongo, p1_cleanup):
     assert result["events_processed"] >= 1
 
     logs = list(mongo.reminder_log.find({"event_id": eid}))
-    channels = {l["channel"] for l in logs}
+    channels = {row["channel"] for row in logs}
     assert "inbox" in channels

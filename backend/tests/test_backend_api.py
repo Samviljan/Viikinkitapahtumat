@@ -303,7 +303,7 @@ def cleanup_test_data(request):
     # Best-effort cleanup
     import requests as _r
     try:
-        login = _r.post(
+        _login = _r.post(
             f"{request.session.config.cache.get('base_url', None) or ''}",
             timeout=5,
         )

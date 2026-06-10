@@ -170,3 +170,111 @@ async def sweep_missing_translations(db, max_events: int = 50) -> dict:
             "translation sweep: %d events left for next run", summary["throttled"]
         )
     return summary
+
+
+# ---------------------------------------------------------------------------
+# Articles — same shape as events, but operates on (title, excerpt, body)
+# across the 7 supported languages. Translations are best-effort: failures
+# leave the field empty (frontend falls back to the source lang via
+# `pickLocalized`).
+# ---------------------------------------------------------------------------
+ARTICLE_FIELDS = ("title", "excerpt", "body")
+
+
+async def fill_missing_article_translations(db, slug: str) -> dict:
+    """For the given article (by slug), translate any empty `title_*` /
+    `excerpt_*` / `body_*` field from whichever language is most populated.
+    Persists only newly-translated fields — never overwrites existing
+    content. Best-effort; partial success is recorded if the LLM is flaky.
+    """
+    art = await db.articles.find_one({"slug": slug}, {"_id": 0})
+    if not art:
+        return {"ok": False, "reason": "not_found"}
+
+    updates: dict = {}
+    for base in ARTICLE_FIELDS:
+        values = {lang: art.get(f"{base}_{lang}", "") for lang in SUPPORTED_LANGS}
+        src = _pick_source(values)
+        if not src:
+            continue
+        for tgt in SUPPORTED_LANGS:
+            if tgt == src:
+                continue
+            if (values.get(tgt) or "").strip():
+                continue
+            translated = await translate(values[src], src, tgt)
+            if translated:
+                updates[f"{base}_{tgt}"] = translated
+
+    if updates:
+        updates["updated_at"] = (
+            __import__("datetime").datetime.now(
+                __import__("datetime").timezone.utc
+            ).isoformat()
+        )
+        await db.articles.update_one({"slug": slug}, {"$set": updates})
+        logger.info(
+            "auto-translated article %s fields=%s", slug, list(updates.keys())
+        )
+    return {"ok": True, "updated": list(updates.keys())}
+
+
+async def sweep_missing_article_translations(db, max_articles: int = 20) -> dict:
+    """Find every article with at least one empty translation field across
+    title/excerpt/body × 7 langs. Triggers `fill_missing_article_translations`
+    on each. Capped per run to bound LLM cost."""
+    proj = {"_id": 0, "slug": 1}
+    for base in ARTICLE_FIELDS:
+        for lang in SUPPORTED_LANGS:
+            proj[f"{base}_{lang}"] = 1
+
+    cursor = db.articles.find({}, proj)
+    candidates: list[str] = []
+    async for art in cursor:
+        missing = False
+        for base in ARTICLE_FIELDS:
+            populated = {
+                lang: (art.get(f"{base}_{lang}") or "").strip()
+                for lang in SUPPORTED_LANGS
+            }
+            if not any(populated.values()):
+                continue  # source language also empty — nothing to translate
+            for lang in SUPPORTED_LANGS:
+                if not populated[lang]:
+                    missing = True
+                    break
+            if missing:
+                break
+        if missing:
+            candidates.append(art["slug"])
+
+    summary = {
+        "candidates": len(candidates),
+        "processed": 0,
+        "fields_filled": 0,
+        "errors": 0,
+    }
+    if not candidates:
+        logger.info("article translation sweep: nothing to do")
+        return summary
+
+    for slug in candidates[:max_articles]:
+        try:
+            result = await fill_missing_article_translations(db, slug)
+            updated = result.get("updated") or []
+            summary["processed"] += 1
+            summary["fields_filled"] += len(updated)
+            if updated:
+                logger.info(
+                    "article translation sweep: slug=%s filled=%d",
+                    slug,
+                    len(updated),
+                )
+        except Exception as e:  # pragma: no cover — best-effort
+            summary["errors"] += 1
+            logger.error("article translation sweep: slug=%s failed: %s", slug, e)
+
+    if len(candidates) > max_articles:
+        summary["throttled"] = len(candidates) - max_articles
+    return summary
+
