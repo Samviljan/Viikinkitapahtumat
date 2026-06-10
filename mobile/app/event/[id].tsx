@@ -40,6 +40,10 @@ export default function EventDetail() {
   const { event, loading, error } = useEvent(id || "");
   const { t, lang } = useSettings();
   const { isFavorite, toggle } = useFavorites();
+  // IMPORTANT: All hooks must run unconditionally on every render. Don't
+  // move this useState below the early returns — it would violate the
+  // Rules of Hooks and crash the screen.
+  const [descOpen, setDescOpen] = useState(false);
 
   if (loading) {
     return (
@@ -62,7 +66,6 @@ export default function EventDetail() {
   const cd = daysUntil(ev.start_date, ev.end_date);
   const dur = durationDays(ev.start_date, ev.end_date);
   const gallery = (ev.gallery || []).map(resolveImageUrl).filter(Boolean) as string[];
-  const [descOpen, setDescOpen] = useState(false);
 
   const titleText =
     localized(ev as unknown as Record<string, unknown>, "title", lang) || ev.title_fi;
