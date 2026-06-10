@@ -11,6 +11,7 @@
     "courses": "Courses",
     "guilds": "Guilds & associations",
     "shops": "Shops",
+    "articles": "Articles",
     "contact": "Contact",
     "admin": "Admin",
     "favorites": "Favorites",
@@ -69,6 +70,15 @@
     "merchants_present": "Merchants present",
     "merchants_present_help": "These merchants have indicated they will attend this event.",
     "registration_form": "Registration form"
+  },
+  "articles": {
+    "title": "Articles",
+    "sub": "Insights about the historical reenactment hobby and events.",
+    "back": "Back to articles",
+    "read_more": "Read article",
+    "empty": "No articles yet. Check back soon.",
+    "published": "Published",
+    "gallery": "Image gallery"
   },
   "submit": {
     "title": "Submit an event",

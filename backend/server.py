@@ -475,6 +475,41 @@ class EventStatusUpdate(BaseModel):
     status: EventStatus
 
 
+# -----------------------------------------------------------------------------
+# Articles — editorial content about the reenactment hobby & events
+# -----------------------------------------------------------------------------
+class ArticleOut(BaseModel):
+    id: str
+    slug: str
+    title_fi: str
+    title_en: Optional[str] = ""
+    title_sv: Optional[str] = ""
+    title_da: Optional[str] = ""
+    title_de: Optional[str] = ""
+    title_et: Optional[str] = ""
+    title_pl: Optional[str] = ""
+    excerpt_fi: Optional[str] = ""
+    excerpt_en: Optional[str] = ""
+    excerpt_sv: Optional[str] = ""
+    excerpt_da: Optional[str] = ""
+    excerpt_de: Optional[str] = ""
+    excerpt_et: Optional[str] = ""
+    excerpt_pl: Optional[str] = ""
+    body_fi: str
+    body_en: Optional[str] = ""
+    body_sv: Optional[str] = ""
+    body_da: Optional[str] = ""
+    body_de: Optional[str] = ""
+    body_et: Optional[str] = ""
+    body_pl: Optional[str] = ""
+    cover_image_url: Optional[str] = ""
+    gallery: List[str] = []
+    published_at: str
+    created_at: str
+    updated_at: Optional[str] = None
+
+
+
 class EventEdit(BaseModel):
     """Full editable event payload for admin update (status not editable here)."""
     model_config = ConfigDict(extra="ignore")
@@ -4325,6 +4360,220 @@ async def get_event(event_id: str):
 
 
 # -----------------------------------------------------------------------------
+# Articles — public list + detail. Seeded automatically on startup.
+# -----------------------------------------------------------------------------
+def _article_images_bucket() -> AsyncIOMotorGridFSBucket:
+    """Dedicated GridFS bucket for article hero/gallery images. Kept separate
+    from event/profile images so we can apply different size/lifecycle rules
+    later (e.g. larger 1600×900 hero crops for full-bleed article layout)."""
+    if not hasattr(_article_images_bucket, "_b"):
+        _article_images_bucket._b = AsyncIOMotorGridFSBucket(  # type: ignore[attr-defined]
+            db, bucket_name="article_images"
+        )
+    return _article_images_bucket._b  # type: ignore[attr-defined]
+
+
+def _public_article_image_url(filename: str) -> str:
+    return f"/api/uploads/article-images/{filename}"
+
+
+@api_router.get("/uploads/article-images/{filename}")
+async def serve_article_image(filename: str):
+    """Public, immutable. Filenames are UUID-prefixed so safe to cache forever."""
+    doc = await db["article_images.files"].find_one(
+        {"filename": filename}, {"_id": 1, "metadata": 1}
+    )
+    if not doc:
+        raise HTTPException(status_code=404, detail="Image not found")
+    ctype = (doc.get("metadata") or {}).get("content_type") or MIME_FOR_EXT.get(
+        Path(filename).suffix.lower(), "application/octet-stream"
+    )
+    stream = await _article_images_bucket().open_download_stream_by_name(filename)
+    data = await stream.read()
+    return Response(
+        content=data,
+        media_type=ctype,
+        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+    )
+
+
+@api_router.get("/articles", response_model=List[ArticleOut])
+async def list_articles():
+    """Public list — newest first by published_at, then created_at."""
+    docs = (
+        await db.articles
+        .find({}, {"_id": 0})
+        .sort([("published_at", -1), ("created_at", -1)])
+        .to_list(200)
+    )
+    return [ArticleOut(**d) for d in docs]
+
+
+@api_router.get("/articles/{slug}", response_model=ArticleOut)
+async def get_article(slug: str):
+    doc = await db.articles.find_one({"slug": slug}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Article not found")
+    return ArticleOut(**doc)
+
+
+# Article auto-seed -----------------------------------------------------------
+_REENACTMENT_INTRO_SLUG = "mita-historianelavoitystapahtumassa-tapahtuu"
+
+_REENACTMENT_INTRO_FI = (
+    "Historianelävöitystapahtuma vie kävijän hetkeksi menneisyyteen. Tapahtumissa "
+    "historiaa ei vain katsella vitriinin takaa, vaan sitä koetaan, kuullaan, "
+    "kokeillaan ja eletään. Suomessa historianelävöitystapahtumat voivat sijoittua "
+    "esimerkiksi rautakaudelle, viikinkiajalle, keskiajalle tai myöhempiin "
+    "historiallisiin aikakausiin.\n\n"
+    "Tapahtumissa voi nähdä historiallisiin vaatteisiin pukeutuneita elävöittäjiä, "
+    "käsityöläisiä, kauppiaita, taistelunäytöksiä, leirejä ja työnäytöksiä. Usein "
+    "paikalla esitellään myös aikakauden ruokaa, aseita, varusteita, koruja, "
+    "tekstiilejä ja arkielämää. Kävijä voi päästä seuraamaan, miten kangasta "
+    "värjättiin, miten sepän työ eteni, millaisia varusteita soturilla oli tai "
+    "miten ihmiset elivät ennen nykyaikaa.\n\n"
+    "Monet tapahtumat sopivat hyvin myös lapsiperheille. Lapsille voi olla tarjolla "
+    "kokeilupisteitä, satuja, pelejä, työnäytöksiä tai mahdollisuus tutustua "
+    "aikakauden esineisiin turvallisesti. Aikuisille tapahtumat tarjoavat "
+    "kiinnostavaa tietoa historiasta, käsityöperinteistä ja elävöitysharrastuksesta.\n\n"
+    "Historianelävöitystapahtumissa tärkeää on tunnelma. Leirinuotion savu, "
+    "käsityöläisten työkalujen äänet, markkinakojujen vilinä ja elävöittäjien tarinat "
+    "tekevät menneisyydestä konkreettista. Jokainen tapahtuma on hieman erilainen: "
+    "osa painottuu markkinoihin, osa taistelunäytöksiin, osa käsityöhön, "
+    "museoympäristöön tai koko perheen elämyksiin.\n\n"
+    "Tapahtumiin voi yleensä tulla tavallisena kävijänä ilman aiempaa kokemusta. "
+    "Riittää, että saavut paikalle uteliaana. Jos kiinnostus syttyy, monissa "
+    "tapahtumissa voi jutella elävöittäjien kanssa ja kysyä, miten harrastukseen "
+    "pääsee mukaan.\n\n"
+    "Historianelävöitystapahtuma on parhaimmillaan elävä ikkuna menneisyyteen. "
+    "Se antaa mahdollisuuden nähdä, miltä historia saattoi tuntua, kuulostaa ja "
+    "näyttää — ja löytää samalla uusia tapahtumia, ihmisiä ja tarinoita."
+)
+
+_ARTICLE_IMAGE_PROMPTS = [
+    (
+        "Atmospheric medieval reenactment marketplace scene: wooden stalls, "
+        "linen banners, blacksmith demonstration with glowing forge, costumed "
+        "reenactors in iron-age and viking-era clothing, smoke from campfires, "
+        "warm golden hour light, photographic realism, cinematic depth of field, "
+        "1600x900 aspect"
+    ),
+    (
+        "Wide angle photo of a historical reenactment camp at dusk: viking-era "
+        "tents, men and women in handwoven tunics, women dyeing fabric over an "
+        "open fire, children watching a craftsman work leather, warm campfire "
+        "light, misty pine forest in the background, photojournalistic style, "
+        "1600x900 aspect"
+    ),
+]
+
+
+async def _seed_intro_article() -> None:
+    """Insert the introductory article + generate 2 hero images via Gemini
+    Nano Banana on first boot. Idempotent — never re-runs if the article
+    already exists. Failures (no LLM key, network) leave the article without
+    images, which the frontend handles gracefully (falls back to gradient)."""
+    existing = await db.articles.find_one({"slug": _REENACTMENT_INTRO_SLUG}, {"id": 1})
+    if existing:
+        return
+
+    api_key = os.environ.get("EMERGENT_LLM_KEY")
+    image_urls: List[str] = []
+    if api_key:
+        try:
+            from emergentintegrations.llm.chat import LlmChat, UserMessage  # noqa: WPS433
+            for idx, prompt in enumerate(_ARTICLE_IMAGE_PROMPTS):
+                chat = LlmChat(
+                    api_key=api_key,
+                    session_id=f"article-img-{_REENACTMENT_INTRO_SLUG}-{idx}",
+                    system_message=(
+                        "Generate atmospheric, photographic images of Finnish "
+                        "historical reenactment events. Avoid text overlays."
+                    ),
+                )
+                chat.with_model(
+                    "gemini", "gemini-3.1-flash-image-preview"
+                ).with_params(modalities=["image", "text"])
+                try:
+                    _, images = await chat.send_message_multimodal_response(
+                        UserMessage(text=prompt)
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("Article image gen %d failed: %s", idx, exc)
+                    continue
+                if not images:
+                    continue
+                img = images[0]
+                mime = img.get("mime_type") or "image/png"
+                ext = ".png" if "png" in mime else (".jpg" if "jpeg" in mime else ".png")
+                try:
+                    image_bytes = base64.b64decode(img["data"])
+                except Exception:  # noqa: BLE001
+                    continue
+                filename = (
+                    f"article_{_REENACTMENT_INTRO_SLUG[:24]}_"
+                    f"{idx}_{uuid.uuid4().hex[:8]}{ext}"
+                )
+                await _article_images_bucket().upload_from_stream(
+                    filename,
+                    image_bytes,
+                    metadata={
+                        "content_type": mime,
+                        "article_slug": _REENACTMENT_INTRO_SLUG,
+                        "kind": "article_image",
+                    },
+                )
+                image_urls.append(_public_article_image_url(filename))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Article seed image generation aborted: %s", exc)
+    else:
+        logger.warning(
+            "EMERGENT_LLM_KEY missing — seeding article without generated images"
+        )
+
+    now = datetime.now(timezone.utc).isoformat()
+    article = {
+        "id": str(uuid.uuid4()),
+        "slug": _REENACTMENT_INTRO_SLUG,
+        "title_fi": "Mitä historianelävöitystapahtumassa tapahtuu?",
+        "title_en": "What happens at a historical reenactment event?",
+        "title_sv": "Vad händer på ett historiskt återskapande-evenemang?",
+        "title_da": "Hvad sker der til et historisk reenactment-arrangement?",
+        "title_de": "Was passiert auf einer historischen Reenactment-Veranstaltung?",
+        "title_et": "Mis toimub ajaloolisel taaskehastuse üritusel?",
+        "title_pl": "Co dzieje się na wydarzeniu rekonstrukcji historycznej?",
+        "excerpt_fi": (
+            "Historianelävöitystapahtuma vie kävijän hetkeksi menneisyyteen — "
+            "markkinoita, käsityötä, taisteluja ja leirituli."
+        ),
+        "excerpt_en": "",
+        "excerpt_sv": "",
+        "excerpt_da": "",
+        "excerpt_de": "",
+        "excerpt_et": "",
+        "excerpt_pl": "",
+        "body_fi": _REENACTMENT_INTRO_FI,
+        "body_en": "",
+        "body_sv": "",
+        "body_da": "",
+        "body_de": "",
+        "body_et": "",
+        "body_pl": "",
+        "cover_image_url": image_urls[0] if image_urls else "",
+        "gallery": image_urls[1:] if len(image_urls) > 1 else [],
+        "published_at": now,
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.articles.insert_one(article.copy())
+    logger.info(
+        "Seeded intro article (slug=%s, %d images)",
+        _REENACTMENT_INTRO_SLUG,
+        len(image_urls),
+    )
+
+
+# -----------------------------------------------------------------------------
 # Bot prerender: server-rendered HTML snapshot for an event page
 # -----------------------------------------------------------------------------
 # Why this exists:
@@ -6054,6 +6303,18 @@ async def on_startup():
     await db.event_organizer_requests.create_index("id", unique=True)
     await db.email_templates.create_index("id", unique=True)
     await db.email_templates.create_index("name")
+    await db.articles.create_index("slug", unique=True)
+    await db.articles.create_index("id", unique=True)
+    await db.articles.create_index("published_at")
+
+    # Seed the introductory article on first boot. Idempotent — exits early
+    # if the article already exists. Image generation may take 10–20s; we
+    # await it here so the article is fully ready by the time the first
+    # /api/articles request arrives.
+    try:
+        await _seed_intro_article()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Intro article seed failed (will retry on next boot): %s", exc)
 
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@viikinkitapahtumat.fi").lower()
     admin_password = os.environ.get("ADMIN_PASSWORD")

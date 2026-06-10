@@ -1092,3 +1092,19 @@ See `/app/memory/test_credentials.md`.
 - Production reverse proxy / CDN can route known bot user-agents to `/api/prerender/events/{id}` while regular users still receive the React SPA. (No proxy config changed in preview — preview ingress forces `X-Robots-Tag: noindex` on everything, that override does NOT apply in production.)
 - Pytest: `tests/test_p1_prerender_seo.py` — 6 tests, all green (200 OK, 404, title, canonical, og tags, JSON-LD schema).
 
+## 2026-06-10 — Articles section + first article (DONE)
+- New `articles` Mongo collection + `Article` Pydantic model with localized title/excerpt/body for all 7 languages.
+- Public endpoints:
+  - `GET /api/articles` — list, sorted by `published_at` desc.
+  - `GET /api/articles/{slug}` — detail.
+  - `GET /api/uploads/article-images/{filename}` — GridFS image serve (immutable cache).
+- Backend startup auto-seeds the intro article `"Mitä historianelävöitystapahtumassa tapahtuu?"` on first boot (idempotent — checks slug before insert). Generates 2 Gemini Nano Banana images and stores them in dedicated `article_images` GridFS bucket. Cover image = first generated, gallery = second.
+- Frontend additions:
+  - `nav.articles` translation key in all 7 languages (Artikkelit / Articles / Artiklar / Artikler / Artikel / Artiklid / Artykuły).
+  - "Artikkelit" nav link added to Layout (between Kaupat and Yhteydenotto).
+  - `Articles.jsx` — list page with cards (cover image, date, title, excerpt, "Lue artikkeli" CTA).
+  - `ArticleDetail.jsx` — full article view with hero image, multi-paragraph body, gallery section, schema.org/Article JSON-LD for SEO.
+  - Routes `/articles` + `/articles/:slug` wired into `App.js`.
+- Pytest: `tests/test_p1_articles.py` (6 tests, all green) — list, detail, 404, image accessibility.
+
+

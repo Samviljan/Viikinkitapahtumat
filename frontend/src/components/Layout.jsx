@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { to: "/courses", key: "nav.courses" },
   { to: "/guilds", key: "nav.guilds" },
   { to: "/shops", key: "nav.shops" },
+  { to: "/articles", key: "nav.articles" },
   { to: "/contact", key: "nav.contact" },
 ];
 

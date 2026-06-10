@@ -24,6 +24,8 @@ import Shops from "@/pages/Shops";
 import MerchantDetail from "@/pages/MerchantDetail";
 import MerchantCardPage from "@/pages/MerchantCardPage";
 import Swordfighting from "@/pages/Swordfighting";
+import Articles from "@/pages/Articles";
+import ArticleDetail from "@/pages/ArticleDetail";
 import Contact from "@/pages/Contact";
 import Privacy from "@/pages/Privacy";
 import Unsubscribe from "@/pages/Unsubscribe";
@@ -64,6 +66,8 @@ function App() {
               <Route path="/shops" element={<Shops />} />
               <Route path="/shops/:id" element={<MerchantDetail />} />
               <Route path="/swordfighting" element={<Swordfighting />} />
+              <Route path="/articles" element={<Articles />} />
+              <Route path="/articles/:slug" element={<ArticleDetail />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/unsubscribe" element={<Unsubscribe />} />

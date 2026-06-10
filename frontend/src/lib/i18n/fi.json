@@ -11,6 +11,7 @@
     "courses": "Kurssit",
     "guilds": "Kaartit & yhdistykset",
     "shops": "Kaupat",
+    "articles": "Artikkelit",
     "about": "Tietoa",
     "contact": "Yhteydenotto",
     "admin": "Ylläpito",
@@ -70,6 +71,15 @@
     "merchants_present": "Kauppiaita paikalla",
     "merchants_present_help": "Nämä kauppiaat ovat ilmoittaneet osallistuvansa tähän tapahtumaan.",
     "registration_form": "Ilmoittautumislomake"
+  },
+  "articles": {
+    "title": "Artikkelit",
+    "sub": "Tietoa harrastuksesta ja historianelävöitystapahtumista.",
+    "back": "Takaisin artikkeleihin",
+    "read_more": "Lue artikkeli",
+    "empty": "Artikkeleita ei vielä ole. Tule pian uudestaan.",
+    "published": "Julkaistu",
+    "gallery": "Kuvagalleria"
   },
   "submit": {
     "title": "Ilmoita tapahtuma",
