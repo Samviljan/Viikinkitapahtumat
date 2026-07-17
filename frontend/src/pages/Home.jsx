@@ -5,7 +5,6 @@ import { api } from "@/lib/api";
 import { useDocumentSeo } from "@/lib/seo";
 import { Button } from "@/components/ui/button";
 import EventCard from "@/components/EventCard";
-import NextUpStrip from "@/components/NextUpStrip";
 import LatestArticlesStrip from "@/components/LatestArticlesStrip";
 import PageHero from "@/components/PageHero";
 import NewsletterSignup from "@/components/NewsletterSignup";
@@ -83,20 +82,11 @@ export default function Home() {
         secondaryCtaLabel={t("home.cta_submit")}
       />
 
-      {/* "Mitä seuraavaksi" strip — compact, scannable, mobile-first.
-          Renders BEFORE the richer Featured grid so a phone user sees
-          the next three actionable events without any scroll-to-discover.
-          Desktop users also get this summary bar above the main grid. */}
-      {loaded ? (
-        <NextUpStrip events={upcoming} />
-      ) : null}
-
-      {/* "Uutta sivustolla" — small strip linking the 1-2 newest articles
-          so users notice new editorial content right from the home page. */}
-      <LatestArticlesStrip limit={2} />
-
-      {/* Featured */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-8 py-20" data-testid="featured-section">
+      {/* "Kaikki tapahtumat" — hero-alapuolelle nostettu, jotta käyttäjä
+          näkee tulevat tapahtumat heti ilman ylimääräistä ylimääräisiä
+          nostoja. (Aiempi NextUpStrip piilotettu — samat 3 tapahtumaa
+          näkyivät sekä siinä että Featured-ruudukossa.) */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-8 pt-12 pb-8" data-testid="featured-section">
         <div className="flex items-end justify-between mb-10">
           <div>
             <div className="text-overline mb-3">{t("home.featured")}</div>
@@ -133,6 +123,10 @@ export default function Home() {
           </div>
         )}
       </section>
+
+      {/* "Uutta sivustolla" — small strip linking the 1-2 newest articles
+          so users notice new editorial content right from the home page. */}
+      <LatestArticlesStrip limit={2} />
 
       {/* Bento split: image + how it works */}
       <section className="mx-auto max-w-7xl px-4 sm:px-8 py-12 grid grid-cols-1 lg:grid-cols-12 gap-6">
