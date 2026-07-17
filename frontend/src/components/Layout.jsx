@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 import NewsletterSignup from "@/components/NewsletterSignup";
 import OfflineBanner from "@/components/OfflineBanner";
 import InstallPWAButton from "@/components/InstallPWAButton";
+import MobileBottomNav from "@/components/MobileBottomNav";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -389,9 +390,11 @@ export default function Layout({ children }) {
         )}
       </header>
 
-      <main className="flex-1" data-testid="page-main" key={location.pathname}>
+      <main className="flex-1 pb-16 md:pb-0" data-testid="page-main" key={location.pathname}>
         {children}
       </main>
+
+      <MobileBottomNav />
 
       {/* Footer */}
       <footer className="border-t border-viking-edge mt-20 py-12 bg-viking-surface/40">
