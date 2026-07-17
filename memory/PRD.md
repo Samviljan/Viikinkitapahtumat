@@ -1156,3 +1156,23 @@ See `/app/memory/test_credentials.md`.
 - Translation keys `pwa.*` in fi + en.
 - Verified via Playwright: manifest OK, SW registered, offline mode shows banner + serves cached `/api/events` (16 events retrieved from cache while `context.set_offline(true)`).
 
+
+## 2026-07-17 — PWA install guide email template (DONE)
+- 3 Gemini-generated illustration images stored in the `article_images` GridFS bucket:
+  - `pwa_guide_android_*.jpg` — Android Chrome browser with install banner
+  - `pwa_guide_ios_*.jpg` — iOS Safari Share menu with "Add to Home Screen"
+  - `pwa_guide_homescreen_*.jpg` — installed app icon on home screen
+- New module `backend/seed_email_templates.py` — houses HTML template bodies (11.9 KB) and gets auto-seeded on startup (idempotent by `name`).
+- Server startup now seeds a "PWA-asennusohje (puhelimeen)" template into `db.email_templates` with:
+  - Branded dark viking theme (Cinzel eyebrows, Georgia serif, gold accents)
+  - Personalized greeting via `{{first_name}}` placeholder
+  - "Miksi asentaa?" benefits box
+  - Android section: 3-step numbered guide + Chrome install banner image
+  - iOS section: 4-step guide + Safari Share menu image (+ iOS 16.4 note)
+  - Home-screen result showcase image
+  - Ember CTA to viikinkitapahtumat.fi
+  - Contact footer with Old Norse blessing
+- Raised `EmailTemplateCreate`/`Update` body limit from 5000 → 60000 chars to fit richer HTML templates.
+- Admin can now find "PWA-asennusohje" in Admin → Sisältö → Sähköpostipohjat and send via the newsletter broadcast panel.
+- Verified visually via Playwright — all 3 sections render correctly with proper spacing, gold-numbered steps, and photorealistic device screenshots.
+

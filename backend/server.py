@@ -3069,7 +3069,7 @@ async def admin_create_email_template(payload: EmailTemplateCreate):
         "id": str(uuid.uuid4()),
         "name": name[:120],
         "subject": subject[:200],
-        "body": body[:5000],
+        "body": body[:60000],
         "icon": (payload.icon or "Mail").strip()[:40] or "Mail",
         "color": (payload.color or "#C8492C").strip()[:9] or "#C8492C",
         "created_at": now_iso,
@@ -3094,7 +3094,7 @@ async def admin_update_email_template(template_id: str, payload: EmailTemplateUp
     if payload.subject is not None:
         updates["subject"] = payload.subject.strip()[:200]
     if payload.body is not None:
-        updates["body"] = payload.body[:5000]
+        updates["body"] = payload.body[:60000]
     if payload.icon is not None:
         updates["icon"] = (payload.icon or "Mail").strip()[:40] or "Mail"
     if payload.color is not None:
@@ -6888,6 +6888,30 @@ async def on_startup():
     await db.event_organizer_requests.create_index("id", unique=True)
     await db.email_templates.create_index("id", unique=True)
     await db.email_templates.create_index("name")
+
+    # Seed default email templates (idempotent — skips if name exists).
+    try:
+        from seed_email_templates import DEFAULT_EMAIL_TEMPLATES
+        seeded_now = 0
+        for tpl in DEFAULT_EMAIL_TEMPLATES:
+            if await db.email_templates.find_one({"name": tpl["name"]}, {"_id": 1}):
+                continue
+            now_iso = datetime.now(timezone.utc).isoformat()
+            await db.email_templates.insert_one({
+                "id": str(uuid.uuid4()),
+                "name": tpl["name"],
+                "subject": tpl["subject"],
+                "body": tpl["body"],
+                "icon": tpl.get("icon", "Mail"),
+                "color": tpl.get("color", "#C8492C"),
+                "created_at": now_iso,
+                "updated_at": now_iso,
+            })
+            seeded_now += 1
+        if seeded_now:
+            logger.info("Seeded %d default email template(s)", seeded_now)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Default email template seed failed: %s", exc)
     await db.articles.create_index("slug", unique=True)
     await db.articles.create_index("id", unique=True)
     await db.articles.create_index("published_at")
