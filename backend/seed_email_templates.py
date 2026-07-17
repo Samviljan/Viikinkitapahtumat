@@ -33,9 +33,9 @@ _STYLE = """
 def _pwa_email_html(site_url: str) -> str:
     """Build the PWA install guide HTML body. Kept as a function so image
     URLs can be swapped for testing/localhost."""
-    android_img = f"{site_url}/api/uploads/article-images/pwa_guide_android_0325f007.jpg"
-    ios_img = f"{site_url}/api/uploads/article-images/pwa_guide_ios_f9880829.jpg"
-    home_img = f"{site_url}/api/uploads/article-images/pwa_guide_homescreen_694e497d.jpg"
+    android_img = f"{site_url}/article-images/pwa_guide_android_0325f007.jpg"
+    ios_img = f"{site_url}/article-images/pwa_guide_ios_f9880829.jpg"
+    home_img = f"{site_url}/article-images/pwa_guide_homescreen_694e497d.jpg"
 
     return f"""<!doctype html>
 <html lang="fi">

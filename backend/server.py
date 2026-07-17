@@ -5047,9 +5047,9 @@ _PWA_INSTALL_SLUG = "asenna-viikinkitapahtumat-puhelimeen"
 # wrapped in a stylised phone frame with rounded corners & dark bezel).
 # Show the actual product rather than a generic phone illustration.
 _PWA_INSTALL_IMAGE_URLS = [
-    "/api/uploads/article-images/pwa_site_home_f3b4ffed.jpg",     # home page (cover)
-    "/api/uploads/article-images/pwa_site_events_f7a05f4b.jpg",   # events listing
-    "/api/uploads/article-images/pwa_site_article_3a390e54.jpg",  # article detail
+    "/article-images/pwa_site_home_f3b4ffed.jpg",     # home page (cover)
+    "/article-images/pwa_site_events_f7a05f4b.jpg",   # events listing
+    "/article-images/pwa_site_article_3a390e54.jpg",  # article detail
 ]
 
 _PWA_INSTALL_BODY_FI = (
@@ -5218,12 +5218,12 @@ async def _seed_privacy_pwa_article() -> None:
         "body_et": "",
         "body_pl": "",
         # Cover: viking shield + smartphone padlock (new Gemini generation)
-        "cover_image_url": "/api/uploads/article-images/privacy_shield_95024907.jpg",
+        "cover_image_url": "/article-images/privacy_shield_95024907.jpg",
         # Gallery: reuse the phone-framed site screenshots — reinforces the
         # message "you see exactly the same site as in a browser".
         "gallery": [
-            "/api/uploads/article-images/pwa_site_home_f3b4ffed.jpg",
-            "/api/uploads/article-images/pwa_site_article_3a390e54.jpg",
+            "/article-images/pwa_site_home_f3b4ffed.jpg",
+            "/article-images/pwa_site_article_3a390e54.jpg",
         ],
         "published_at": now,
         "created_at": now,
