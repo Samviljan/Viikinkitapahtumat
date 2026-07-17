@@ -7131,6 +7131,54 @@ async def on_startup():
     except Exception as exc:  # noqa: BLE001
         logger.warning("Privacy/PWA article seed failed (will retry on next boot): %s", exc)
 
+    # ---- Self-healing for seed articles' image URLs ---------------------
+    # Older deploys wrote hero/gallery URLs pointing at the GridFS-backed
+    # /api/uploads/article-images/<file>.jpg endpoint. Those blobs live only
+    # in the *preview* Mongo bucket — production has empty GridFS so those
+    # URLs 404. The files are now committed to the repo as static assets at
+    # /article-images/<file>.jpg. This one-shot startup pass rewrites any
+    # DB article that still references the old prefix but only for the
+    # specific seed-owned filenames (never touches admin-uploaded images).
+    try:
+        _SEED_IMAGE_FILES = {
+            "privacy_shield_95024907.jpg",
+            "pwa_site_home_f3b4ffed.jpg",
+            "pwa_site_events_f7a05f4b.jpg",
+            "pwa_site_article_3a390e54.jpg",
+            "pwa_guide_android_0325f007.jpg",
+            "pwa_guide_ios_f9880829.jpg",
+            "pwa_guide_homescreen_694e497d.jpg",
+        }
+        _OLD_PFX = "/api/uploads/article-images/"
+        _NEW_PFX = "/article-images/"
+
+        def _heal(url: Optional[str]) -> Optional[str]:
+            if not url or not url.startswith(_OLD_PFX):
+                return url
+            filename = url[len(_OLD_PFX):]
+            if filename in _SEED_IMAGE_FILES:
+                return _NEW_PFX + filename
+            return url
+
+        healed = 0
+        async for art in db.articles.find({}, {"_id": 1, "slug": 1, "cover_image_url": 1, "gallery": 1}):
+            changes = {}
+            new_cover = _heal(art.get("cover_image_url"))
+            if new_cover != art.get("cover_image_url"):
+                changes["cover_image_url"] = new_cover
+            gallery = art.get("gallery") or []
+            new_gallery = [_heal(g) for g in gallery]
+            if new_gallery != gallery:
+                changes["gallery"] = new_gallery
+            if changes:
+                changes["updated_at"] = datetime.now(timezone.utc).isoformat()
+                await db.articles.update_one({"_id": art["_id"]}, {"$set": changes})
+                healed += 1
+        if healed:
+            logger.info("Auto-healed %d article(s) with legacy GridFS image URLs", healed)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Article image URL self-heal failed: %s", exc)
+
     # Translate any seeded/manually-added articles into the other 6 languages
     # in the background. Best-effort; runs once per boot and is fully
     # idempotent (only fills empty fields). We schedule it as a task so the
