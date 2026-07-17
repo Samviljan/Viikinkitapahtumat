@@ -5040,6 +5040,98 @@ async def _seed_beta_tester_article() -> None:
     )
 
 
+# ---------- Article #3: PWA install guide ---------------------------------
+_PWA_INSTALL_SLUG = "asenna-viikinkitapahtumat-puhelimeen"
+
+# Reuses the same 3 hero images that live in the article_images GridFS
+# bucket (generated for the "PWA-asennusohje" email template) — no need
+# to burn LLM credits regenerating them.
+_PWA_INSTALL_IMAGE_URLS = [
+    "/api/uploads/article-images/pwa_guide_android_0325f007.jpg",
+    "/api/uploads/article-images/pwa_guide_ios_f9880829.jpg",
+    "/api/uploads/article-images/pwa_guide_homescreen_694e497d.jpg",
+]
+
+_PWA_INSTALL_BODY_FI = (
+    "Voit nyt asentaa viikinkitapahtumat.fi-sivuston aloitusnäytöllesi kuten "
+    "minkä tahansa sovelluksen — ilman Google Playta tai App Storea. Se "
+    "tarkoittaa nopeampaa käynnistystä, oman kuvakkeen sekä tapahtumakalenterin "
+    "selailua myös offline-tilassa.\n\n"
+    "## Miksi asentaa?\n\n"
+    "- Kalenteri toimii myös verkon katketessa — tallennetut tapahtumat pysyvät luettavina\n"
+    "- Oma kuvake aloitusnäytöllä — ei tarvitse muistaa osoitetta\n"
+    "- Nopeampi käynnistys ja täyskuvatila (ei selainpalkkia)\n"
+    "- Vie noin 500 kt tilaa — murto-osan siitä mitä natiivit sovellukset\n\n"
+    "## Android · Chrome-selain\n\n"
+    "Asennus Android-puhelimeen käy näin:\n\n"
+    "- Avaa Chrome-selain ja mene osoitteeseen viikinkitapahtumat.fi\n"
+    "- Näet alalaidassa keltaisen \u201eAsenna sovellus\u201d -painikkeen — paina sitä\n"
+    "- Chrome kysyy vahvistuksen → paina uudelleen \u201eAsenna\u201d. Sovellus ilmestyy aloitusnäytöllesi.\n\n"
+    "Vinkki: jos painiketta ei näy, avaa Chromen valikko (kolme pistettä oikeassa yläkulmassa) ja valitse \u201eAsenna sovellus\u201d tai \u201eLisää aloitusnäyttöön\u201d.\n\n"
+    "## iPhone · Safari-selain\n\n"
+    "Asennus iPhoneen tapahtuu Safarin kautta (Chrome ei toimi iOS:llä tähän tarkoitukseen):\n\n"
+    "- Avaa Safari ja mene osoitteeseen viikinkitapahtumat.fi\n"
+    "- Paina alapalkin keskellä olevaa Jaa-painiketta (neliö, jossa nuoli osoittaa ylös)\n"
+    "- Vieritä listaa alaspäin ja valitse \u201eLisää aloitusnäyttöön\u201d\n"
+    "- Paina oikeassa yläkulmassa \u201eLisää\u201d. Kuvake ilmestyy aloitusnäytölle.\n\n"
+    "Vinkki: iOS 16.4 tai uudempi tarvitaan täyden toimivuuden vuoksi (esim. push-ilmoitukset). Voit halutessasi myös vetää kuvakkeen lopulliseen kohtaan aloitusnäytöllä pitämällä sovellusta painettuna.\n\n"
+    "## Näin sovellus näyttää asennuksen jälkeen\n\n"
+    "Kultainen Fehu-riimu tunnistettavassa muodossa ilmestyy aloitusnäytöllesi — yksi klikkaus ja koko tapahtumakalenteri on käytössäsi. Ei enää selainpalkkia, ei osoiterivin naputtelua.\n\n"
+    "## Kysymyksiä?\n\n"
+    "Jos asennus ei syystä tai toisesta onnistu, lähetä sähköpostia osoitteeseen admin@viikinkitapahtumat.fi ja kerro mitä puhelinta ja selainta käytät. Autamme mielellämme."
+)
+
+
+async def _seed_pwa_install_article() -> None:
+    """Insert the PWA install guide article. Reuses images generated for
+    the corresponding email template, so this runs fast (no LLM calls).
+    Idempotent — exits early if the slug already exists."""
+    existing = await db.articles.find_one({"slug": _PWA_INSTALL_SLUG}, {"id": 1})
+    if existing:
+        return
+
+    now = datetime.now(timezone.utc).isoformat()
+    article = {
+        "id": str(uuid.uuid4()),
+        "slug": _PWA_INSTALL_SLUG,
+        "title_fi": "Asenna Viikinkitapahtumat puhelimeesi ilman sovelluskauppaa",
+        "title_en": "Install Viikinkitapahtumat on your phone without an app store",
+        "title_sv": "Installera Viikinkitapahtumat på din telefon utan appbutik",
+        "title_da": "Installer Viikinkitapahtumat på din telefon uden en app-butik",
+        "title_de": "Viikinkitapahtumat ohne App-Store auf dem Handy installieren",
+        "title_et": "Paigalda Viikinkitapahtumat oma telefoni ilma rakenduse poeta",
+        "title_pl": "Zainstaluj Viikinkitapahtumat na telefonie bez sklepu z aplikacjami",
+        "excerpt_fi": (
+            "Näin lisäät viikinkitapahtumat.fi:n aloitusnäytöllesi kuvakkeeksi — "
+            "toimii myös offline ja käynnistyy sekunnissa."
+        ),
+        "excerpt_en": "",
+        "excerpt_sv": "",
+        "excerpt_da": "",
+        "excerpt_de": "",
+        "excerpt_et": "",
+        "excerpt_pl": "",
+        "body_fi": _PWA_INSTALL_BODY_FI,
+        "body_en": "",
+        "body_sv": "",
+        "body_da": "",
+        "body_de": "",
+        "body_et": "",
+        "body_pl": "",
+        "cover_image_url": _PWA_INSTALL_IMAGE_URLS[2],  # home-screen (result)
+        "gallery": [
+            _PWA_INSTALL_IMAGE_URLS[0],  # Android install banner
+            _PWA_INSTALL_IMAGE_URLS[1],  # iOS Share menu
+        ],
+        "published_at": now,
+        "created_at": now,
+        "updated_at": now,
+        "feedback_form_type": None,
+    }
+    await db.articles.insert_one(article.copy())
+    logger.info("Seeded PWA install article (slug=%s)", _PWA_INSTALL_SLUG)
+
+
 # Article feedback (open form posted by visitors of the beta-tester article)
 class BetaFeedbackIn(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -6928,6 +7020,10 @@ async def on_startup():
         await _seed_beta_tester_article()
     except Exception as exc:  # noqa: BLE001
         logger.warning("Beta tester article seed failed (will retry on next boot): %s", exc)
+    try:
+        await _seed_pwa_install_article()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("PWA install article seed failed (will retry on next boot): %s", exc)
 
     # Translate any seeded/manually-added articles into the other 6 languages
     # in the background. Best-effort; runs once per boot and is fully
