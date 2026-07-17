@@ -43,7 +43,7 @@ function LanguageSwitcher() {
       <DropdownMenuTrigger asChild>
         <button
           data-testid="lang-switcher"
-          className="flex items-center gap-2 px-3 py-2 rounded-sm border border-viking-edge text-viking-bone hover:border-viking-gold hover:text-viking-gold transition-colors"
+          className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 rounded-sm border border-viking-edge text-viking-bone hover:border-viking-gold hover:text-viking-gold transition-colors"
         >
           <Globe2 size={16} />
           <span className="font-rune text-xs">{lang.toUpperCase()}</span>
@@ -74,18 +74,18 @@ function LanguageSwitcher() {
 function Brand() {
   const { t } = useI18n();
   return (
-    <Link to="/" data-testid="brand-link" className="flex items-center gap-3 group">
+    <Link to="/" data-testid="brand-link" className="flex items-center gap-2 sm:gap-3 group min-w-0 flex-shrink">
       <span
         aria-hidden
-        className="inline-flex h-9 w-9 items-center justify-center border border-viking-gold/60 text-viking-gold font-accent text-lg rounded-sm group-hover:border-viking-ember group-hover:text-viking-ember transition-colors"
+        className="inline-flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center border border-viking-gold/60 text-viking-gold font-accent text-base sm:text-lg rounded-sm group-hover:border-viking-ember group-hover:text-viking-ember transition-colors flex-shrink-0"
       >
         ᚠ
       </span>
-      <div className="flex flex-col leading-none">
-        <span className="font-accent text-sm sm:text-base text-viking-bone tracking-[0.2em]">
+      <div className="flex flex-col leading-none min-w-0 flex-shrink">
+        <span className="font-accent text-[11px] sm:text-sm md:text-base text-viking-bone tracking-[0.15em] sm:tracking-[0.2em] truncate">
           {t("site.name").toUpperCase()}
         </span>
-        <span className="hidden sm:block text-[10px] text-viking-stone tracking-wider mt-1">
+        <span className="hidden md:block text-[10px] text-viking-stone tracking-wider mt-1 truncate">
           {t("site.tagline")}
         </span>
       </div>
@@ -263,7 +263,7 @@ export default function Layout({ children }) {
       <InstallPWAButton />
       {/* Header */}
       <header className="sticky top-0 z-40 glass-header border-b border-viking-edge">
-        <div className="mx-auto max-w-7xl px-4 sm:px-8 h-16 flex items-center justify-between">
+        <div className="mx-auto max-w-7xl px-3 sm:px-8 h-16 flex items-center justify-between gap-2 min-w-0">
           <Brand />
 
           <nav className="hidden lg:flex items-center gap-1">
@@ -285,9 +285,9 @@ export default function Layout({ children }) {
             ))}
           </nav>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
             <MessagesNavLink />
-            <FavoritesNavLink />
+            <span className="hidden sm:inline-flex"><FavoritesNavLink /></span>
             <LanguageSwitcher />
             <AccountMenu />
             <button
