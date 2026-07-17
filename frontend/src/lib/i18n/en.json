@@ -105,6 +105,15 @@
     "error_invalid_email": "Please check your email address.",
     "error_generic": "Submission failed. Please try again in a moment."
   },
+  "pwa": {
+    "eyebrow": "New",
+    "title": "Install the app on your phone",
+    "body": "Install Viikinkitapahtumat to your home screen — faster launch and works even without a network.",
+    "install": "Install app",
+    "dismiss": "Dismiss",
+    "ios_hint": "To install: tap the Share icon in your browser and pick ”Add to Home Screen”.",
+    "offline_banner": "No connection — showing cached events."
+  },
   "submit": {
     "title": "Submit an event",
     "sub": "Your submission will appear after admin approval.",

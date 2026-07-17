@@ -106,10 +106,23 @@
         </script>
 
         <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-        <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-        <link rel="apple-touch-icon" href="%PUBLIC_URL%/favicon.ico" />
+        <link rel="icon" type="image/x-icon" href="%PUBLIC_URL%/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="16x16" href="%PUBLIC_URL%/pwa-icons/favicon-16.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="%PUBLIC_URL%/pwa-icons/favicon-32.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="%PUBLIC_URL%/pwa-icons/icon-192.png" />
+        <link rel="icon" type="image/png" sizes="512x512" href="%PUBLIC_URL%/pwa-icons/icon-512.png" />
+
+        <!-- iOS Safari / iPadOS home-screen install -->
+        <link rel="apple-touch-icon" sizes="180x180" href="%PUBLIC_URL%/pwa-icons/apple-touch-icon.png" />
+        <link rel="apple-touch-icon" sizes="192x192" href="%PUBLIC_URL%/pwa-icons/icon-192.png" />
+        <link rel="mask-icon" href="%PUBLIC_URL%/pwa-icons/icon-192.png" color="#C19C4D" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Viikinki" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="application-name" content="Viikinkitapahtumat" />
+        <meta name="msapplication-TileColor" content="#110E0C" />
+        <meta name="msapplication-TileImage" content="%PUBLIC_URL%/pwa-icons/icon-192.png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link

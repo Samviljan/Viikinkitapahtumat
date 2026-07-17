@@ -106,6 +106,15 @@
     "error_invalid_email": "Tarkista sähköpostiosoite.",
     "error_generic": "Lähetys epäonnistui. Yritä hetken kuluttua uudelleen."
   },
+  "pwa": {
+    "eyebrow": "Uutta",
+    "title": "Asenna sovellus puhelimeen",
+    "body": "Asenna Viikinkitapahtumat-sovellus aloitusnäytölle — nopeampi käynnistys ja toimii myös ilman verkkoa.",
+    "install": "Asenna sovellus",
+    "dismiss": "Sulje",
+    "ios_hint": "Asenna: paina Jaa-painiketta selaimessa ja valitse ”Lisää aloitusnäyttöön”.",
+    "offline_banner": "Ei verkkoyhteyttä — näytetään tallennettuja tapahtumia."
+  },
   "submit": {
     "title": "Ilmoita tapahtuma",
     "sub": "Lähettämäsi tapahtuma julkaistaan ylläpidon hyväksynnän jälkeen.",

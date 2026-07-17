@@ -1141,3 +1141,18 @@ See `/app/memory/test_credentials.md`.
   - Per-article inline editor: edit FI fields, upload cover + gallery images (drag-and-drop or click), delete individual images, trigger manual translation, delete entire article (with confirm dialog).
 - Pytest: `tests/test_p1_admin_articles_crud.py` — 8 new tests (auth gates, validation, slug auto-gen, duplicate rejection, PATCH, image upload, image MIME rejection, delete). Total article-related tests: 24, all green.
 
+
+## 2026-07-17 — PWA phase 1 + 2 (installable app + offline cache) (DONE)
+- Icon generation (Python PIL): resized mobile app icon.png to 6 PWA-standard sizes into `/app/frontend/public/pwa-icons/` (192, 512, maskable variants + apple-touch 180, favicons 16/32) + rebuilt multi-size favicon.ico. Icons draw from the existing branded Fehu-rune viking design already used in the Expo app.
+- `manifest.json` rewrite: proper `icons[]` with `purpose=any` + `purpose=maskable`, `shortcuts[]` for Tapahtumat/Artikkelit/Suosikit, `id`, `start_url` with UTM tag, `categories`, `display_override` for future Window Controls Overlay.
+- `index.html` iOS support: `apple-touch-icon` (180 + 192), `apple-mobile-web-app-*` meta, `mask-icon`, `application-name`, `msapplication-TileColor`.
+- Service worker v3 rewrite (`service-worker.js`) — three cache buckets:
+  - **shell**: stale-while-revalidate for static assets, network-first with fallback for navigation.
+  - **api**: stale-while-revalidate + 24 h max-age for `/api/events` and `/api/articles` list endpoints; network-first with cache fallback for detail endpoints. Non-GET and non-cacheable API paths bypass entirely.
+  - **img**: cache-first for uploaded/generated images (UUID filenames → immutable).
+- `InstallPWAButton.jsx` — captures `beforeinstallprompt`, renders branded install banner; shows iOS-specific "Add to Home Screen" hint on Safari. 14-day dismiss cooldown.
+- `OfflineBanner.jsx` — sticky top banner via `navigator.onLine` + online/offline events.
+- Both mounted in `Layout.jsx`.
+- Translation keys `pwa.*` in fi + en.
+- Verified via Playwright: manifest OK, SW registered, offline mode shows banner + serves cached `/api/events` (16 events retrieved from cache while `context.set_offline(true)`).
+

@@ -6,6 +6,8 @@ import { Menu, X, Globe2, Shield, LogOut, CalendarCheck, User, UserCircle2, Mail
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import NewsletterSignup from "@/components/NewsletterSignup";
+import OfflineBanner from "@/components/OfflineBanner";
+import InstallPWAButton from "@/components/InstallPWAButton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -257,6 +259,8 @@ export default function Layout({ children }) {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <OfflineBanner />
+      <InstallPWAButton />
       {/* Header */}
       <header className="sticky top-0 z-40 glass-header border-b border-viking-edge">
         <div className="mx-auto max-w-7xl px-4 sm:px-8 h-16 flex items-center justify-between">

@@ -1,18 +1,66 @@
 {
+  "id": "/",
+  "start_url": "/?utm_source=pwa",
+  "scope": "/",
+  "name": "Viikinkitapahtumat — viikinki- ja rautakauden tapahtumakalenteri",
   "short_name": "Viikinki",
-  "name": "Viikinkitapahtumat",
-  "description": "Viikinkitapahtumat — pohjoisen viikinki- ja rauta-aikaharrastajien kalenteri ja yhteisö.",
-  "icons": [
-    {
-      "src": "favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
-    }
-  ],
-  "start_url": "./",
+  "description": "Pohjoisen viikinki-, rautakauden ja historianelävöitystapahtumien kalenteri ja yhteisö. Löydä markkinat, taistelunäytökset, kurssit ja käsityönäyttelyt yhdestä paikasta.",
+  "lang": "fi",
+  "dir": "ltr",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui", "browser"],
+  "orientation": "any",
   "theme_color": "#110E0C",
   "background_color": "#110E0C",
-  "lang": "fi",
-  "scope": "./"
+  "categories": ["events", "lifestyle", "social", "travel"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/pwa-icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-icons/icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/pwa-icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Tapahtumat",
+      "short_name": "Tapahtumat",
+      "description": "Selaa viikinki- ja rautakauden tapahtumia",
+      "url": "/events",
+      "icons": [{ "src": "/pwa-icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Artikkelit",
+      "short_name": "Artikkelit",
+      "description": "Lue harrastuksesta ja tapahtumista",
+      "url": "/articles",
+      "icons": [{ "src": "/pwa-icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Suosikit",
+      "short_name": "Suosikit",
+      "description": "Omat tapahtumat ja RSVP:t",
+      "url": "/favorites",
+      "icons": [{ "src": "/pwa-icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
 }
