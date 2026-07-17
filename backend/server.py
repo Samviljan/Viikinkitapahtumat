@@ -5132,6 +5132,108 @@ async def _seed_pwa_install_article() -> None:
     logger.info("Seeded PWA install article (slug=%s)", _PWA_INSTALL_SLUG)
 
 
+# ---------- Article #4: privacy & PWA (does the app spy on me?) ----------
+_PRIVACY_PWA_SLUG = "vakoileeko-sovellus-minua-tietosuoja-ja-pwa"
+
+_PRIVACY_PWA_BODY_FI = (
+    "Yhä useampi käyttäjä on tietoinen siitä, että puhelimen sovellukset voivat kerätä paljon henkilökohtaista tietoa. Kun asennat viikinkitapahtumat.fi-sivuston puhelimeesi PWA-sovelluksena, on täysin oikeutettua kysyä: mitä tämä sovellus näkee minusta, ja pystyykö se seuraamaan tekemisiäni?\n\n"
+    "Vastaus on lyhyesti: **ei, sovellus ei vakoile sinua**. Alla kerromme miksi — ja miten voit halutessasi tarkistaa asian itse.\n\n"
+    "## Mikä PWA on ja miksi se on turvallisempi kuin \u201eperinteinen\u201d sovellus?\n\n"
+    "PWA (Progressive Web App) on **pohjimmiltaan tavallinen verkkosivu**, joka on paketoitu niin, että sen voi asentaa aloitusnäytölle kuten minkä tahansa sovelluksen. Se ei kuitenkaan ole erillinen ohjelma vaan pyörii selaimessa — vaikka se näyttäisi kokoruutusovellukselta.\n\n"
+    "Käytännössä tämä tarkoittaa, että PWA:lla on **täsmälleen samat rajoitukset** kuin millä tahansa verkkosivulla. Se ei voi:\n\n"
+    "- Lukea yhteystietojasi tai puheluhistoriaasi\n"
+    "- Nähdä puhelimen valokuvia (paitsi ne, jotka nimenomaisesti lataat)\n"
+    "- Selata muiden sovellusten dataa\n"
+    "- Käynnistyä taustalla ilman että avaat sen\n"
+    "- Käyttää sijaintitietoa ilman lupaa\n"
+    "- Lähettää push-ilmoituksia ilman lupaa\n"
+    "- Käyttää kameraa tai mikrofonia ilman lupaa\n\n"
+    "Toisin sanoen: viikinkitapahtumat.fi asennettuna PWA:na näkee sinusta yhtä paljon (ja vain yhtä paljon) kuin jos avaisit sivuston selaimessa.\n\n"
+    "## Mitä tietoja viikinkitapahtumat.fi kerää?\n\n"
+    "Kaikki keräämämme tieto on kuvattu tarkasti tietosuojaselosteessa, mutta lyhyesti tässä on koko lista:\n\n"
+    "- **Selainmuistiin (localStorage) tallennettuja tietoja**: valittu kieli, hyväksymäsi evästeasetukset, kirjautumisen jälkeen JWT-kirjautumistunniste. Nämä pysyvät VAIN sinun laitteellasi.\n"
+    "- **Palvelimelle tallennettuja tietoja jos rekisteröidyt**: sähköposti, salasana (bcrypt-hashattuna — emme näe salasanaasi selvätekstinä), nimimerkki, maa, kiinnostuksen kohteet ja se mitä tapahtumia olet RSVP:llä ilmoittanut. Kaikki nämä olet itse antanut ja voit poistaa ne milloin tahansa.\n"
+    "- **Verkkoliikenteen lokitiedot** (IP-osoite, käytetyt sivut, ajankohta) — säilytämme 30 päivää palveluvirheiden korjaamiseksi ja väärinkäytön estämiseksi.\n"
+    "- **Anonyymit käyttötilastot** Google Analyticsin kautta — VAIN jos hyväksyt evästebannerista. Voit hylätä ne yhdellä klikkauksella.\n\n"
+    "**Emme myy tietojasi kolmansille osapuolille**. Emme lähetä sinulle mainossähköpostia ilman erillistä uutiskirjeen tilausta. Sivustolla ei ole mainoksia eikä ulkoisia mainostajien seurantapiksellejä.\n\n"
+    "## Miten offline-toiminto toimii — kerätäänkö silloin tietoa?\n\n"
+    "Kun asennat PWA:n, palvelutyöntekijä (service worker) tallentaa selaimen sisäiseen välimuistiin niitä tapahtumia ja artikkeleita, joita olet katsonut. Tämän ansiosta voit selata jo latautuneita sivuja myös verkon katketessa.\n\n"
+    "**Välimuisti on täysin paikallinen** — mitään ei lähetetä takaisin palvelimelle. Voit tyhjentää sen milloin tahansa poistamalla sovelluksen tai selaimen välimuistin kautta.\n\n"
+    "## Miten voit itse varmistaa mitä sovellus tekee?\n\n"
+    "PWA:n läpinäkyvyys on sen suuri etu: koska se on verkkosivu, voit **kirjaimellisesti tarkistaa itse** mitä se lähettää ja vastaanottaa:\n\n"
+    "- Avaa Chrome tai Firefox tietokoneella\n"
+    "- Mene osoitteeseen viikinkitapahtumat.fi\n"
+    "- Paina F12 → välilehti \u201eNetwork\u201d\n"
+    "- Selaa sivustoa ja katso kaikki verkkopyynnöt. Ei mitään piilotettuja pyyntöjä muualle kuin viikinkitapahtumat.fi:n omalle palvelimelle.\n\n"
+    "Sama pätee mobiilisovellukselle asennettuna PWA:na — se on sama koodi, sama liikenne.\n\n"
+    "## Voinko peruuttaa lupia jos muutan mieleni?\n\n"
+    "Kyllä, ja se on helppoa:\n\n"
+    "- **Sijainti / kamera / mikrofoni**: mene puhelimen selaimen asetuksiin → sivustokohtaiset asetukset → viikinkitapahtumat.fi → peru kaikki luvat. Sovellus ei voi enää käyttää niitä.\n"
+    "- **Push-ilmoitukset**: peru samasta valikosta (tai natiivista Asetukset → Ilmoitukset).\n"
+    "- **Evästeet / analytiikka**: paina alalaidassa olevaa evästebanneria tai käy Tietosuojaseloste-sivulla.\n"
+    "- **Käyttäjätilin poisto**: profiilisivulla on \u201ePoista tili\u201d -painike, joka poistaa kaikki henkilökohtaiset tietosi peruuttamattomasti.\n"
+    "- **Poista koko sovellus**: pitkä painallus aloitusnäytöllä olevalle kuvakkeelle → Poista sovellus. Kaikki paikalliseen välimuistiin tallennettu poistetaan samalla.\n\n"
+    "## Yhteenveto\n\n"
+    "PWA:na asennettu viikinkitapahtumat.fi ei ole vakoiluohjelma — se on **sama verkkosivusto** jonka tunnet, jolla on sama tietosuoja kuin selaimessa käyttäessäsi. Mikään erityisesti PWA-asennuksen mukana ei kerää lisätietoa. Kaikkia lupia hallinnoidaan puhelimen selaimen omien asetusten kautta.\n\n"
+    "Jos sinulla on kysymyksiä tietosuojasta tai haluat tarkistaa mitä tietoja meillä on sinusta, ota yhteyttä osoitteeseen admin@viikinkitapahtumat.fi. GDPR:n mukaisesti annamme sinulle koko datasi kopion 30 päivän sisällä pyynnöstä.\n\n"
+    "Täydellinen tietosuojaseloste löytyy sivuston alaosasta \u201eTietosuoja\u201d-linkistä."
+)
+
+
+async def _seed_privacy_pwa_article() -> None:
+    """Insert the privacy/PWA explainer article. Reuses site screenshots
+    from the install-guide article for the gallery, plus a new dedicated
+    cover image (viking shield + smartphone padlock).
+    Idempotent — exits early if the slug already exists."""
+    existing = await db.articles.find_one({"slug": _PRIVACY_PWA_SLUG}, {"id": 1})
+    if existing:
+        return
+
+    now = datetime.now(timezone.utc).isoformat()
+    article = {
+        "id": str(uuid.uuid4()),
+        "slug": _PRIVACY_PWA_SLUG,
+        "title_fi": "Vakoileeko sovellus minua? Tietosuoja ja PWA yksinkertaisesti selitettynä",
+        "title_en": "Is the app spying on me? Privacy and PWA explained simply",
+        "title_sv": "Spionerar appen på mig? Integritet och PWA enkelt förklarat",
+        "title_da": "Spionerer appen på mig? Privatliv og PWA enkelt forklaret",
+        "title_de": "Spioniert die App mich aus? Datenschutz und PWA einfach erklärt",
+        "title_et": "Kas rakendus jälgib mind? Privaatsus ja PWA lihtsalt selgitatud",
+        "title_pl": "Czy aplikacja mnie szpieguje? Prywatność i PWA prosto wyjaśnione",
+        "excerpt_fi": (
+            "PWA:na asennettu viikinkitapahtumat.fi ei näe sinusta enempää kuin "
+            "selain. Näin varmistat asian itse ja hallinnoit lupia."
+        ),
+        "excerpt_en": "",
+        "excerpt_sv": "",
+        "excerpt_da": "",
+        "excerpt_de": "",
+        "excerpt_et": "",
+        "excerpt_pl": "",
+        "body_fi": _PRIVACY_PWA_BODY_FI,
+        "body_en": "",
+        "body_sv": "",
+        "body_da": "",
+        "body_de": "",
+        "body_et": "",
+        "body_pl": "",
+        # Cover: viking shield + smartphone padlock (new Gemini generation)
+        "cover_image_url": "/api/uploads/article-images/privacy_shield_95024907.jpg",
+        # Gallery: reuse the phone-framed site screenshots — reinforces the
+        # message "you see exactly the same site as in a browser".
+        "gallery": [
+            "/api/uploads/article-images/pwa_site_home_f3b4ffed.jpg",
+            "/api/uploads/article-images/pwa_site_article_3a390e54.jpg",
+        ],
+        "published_at": now,
+        "created_at": now,
+        "updated_at": now,
+        "feedback_form_type": None,
+    }
+    await db.articles.insert_one(article.copy())
+    logger.info("Seeded privacy/PWA article (slug=%s)", _PRIVACY_PWA_SLUG)
+
+
 # Article feedback (open form posted by visitors of the beta-tester article)
 class BetaFeedbackIn(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -7024,6 +7126,10 @@ async def on_startup():
         await _seed_pwa_install_article()
     except Exception as exc:  # noqa: BLE001
         logger.warning("PWA install article seed failed (will retry on next boot): %s", exc)
+    try:
+        await _seed_privacy_pwa_article()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Privacy/PWA article seed failed (will retry on next boot): %s", exc)
 
     # Translate any seeded/manually-added articles into the other 6 languages
     # in the background. Best-effort; runs once per boot and is fully
