@@ -61,7 +61,7 @@ export default function Home() {
         const end = e.end_date || e.start_date;
         return typeof end === "string" && end >= today;
       })
-      .slice(0, 3);
+      .slice(0, 6);
   }, [events]);
 
   return (
