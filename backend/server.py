@@ -5043,13 +5043,13 @@ async def _seed_beta_tester_article() -> None:
 # ---------- Article #3: PWA install guide ---------------------------------
 _PWA_INSTALL_SLUG = "asenna-viikinkitapahtumat-puhelimeen"
 
-# Reuses the same 3 hero images that live in the article_images GridFS
-# bucket (generated for the "PWA-asennusohje" email template) — no need
-# to burn LLM credits regenerating them.
+# Real site screenshots (viikinkitapahtumat.fi rendered in mobile viewport,
+# wrapped in a stylised phone frame with rounded corners & dark bezel).
+# Show the actual product rather than a generic phone illustration.
 _PWA_INSTALL_IMAGE_URLS = [
-    "/api/uploads/article-images/pwa_guide_android_0325f007.jpg",
-    "/api/uploads/article-images/pwa_guide_ios_f9880829.jpg",
-    "/api/uploads/article-images/pwa_guide_homescreen_694e497d.jpg",
+    "/api/uploads/article-images/pwa_site_home_f3b4ffed.jpg",     # home page (cover)
+    "/api/uploads/article-images/pwa_site_events_f7a05f4b.jpg",   # events listing
+    "/api/uploads/article-images/pwa_site_article_3a390e54.jpg",  # article detail
 ]
 
 _PWA_INSTALL_BODY_FI = (
@@ -5118,10 +5118,10 @@ async def _seed_pwa_install_article() -> None:
         "body_de": "",
         "body_et": "",
         "body_pl": "",
-        "cover_image_url": _PWA_INSTALL_IMAGE_URLS[2],  # home-screen (result)
+        "cover_image_url": _PWA_INSTALL_IMAGE_URLS[0],  # home page (cover)
         "gallery": [
-            _PWA_INSTALL_IMAGE_URLS[0],  # Android install banner
-            _PWA_INSTALL_IMAGE_URLS[1],  # iOS Share menu
+            _PWA_INSTALL_IMAGE_URLS[1],  # events listing
+            _PWA_INSTALL_IMAGE_URLS[2],  # article detail
         ],
         "published_at": now,
         "created_at": now,
