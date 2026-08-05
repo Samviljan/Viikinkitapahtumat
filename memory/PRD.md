@@ -1229,3 +1229,24 @@ See `/app/memory/test_credentials.md`.
   - `record_inbox_rows` renamed from `_record_inbox_rows` (public) so the reminder writer in server.py can import + call it. It now takes `db` as first positional arg (removes the previous implicit module-level `db` reference).
   - `get_messaging_quota_config` now takes `db` as arg (was reading module-level `db`).
 - **Impact**: `server.py`: 6,431 → 5,634 lines (-797 lines, -12 %). Cumulative refactor progress since 2026-08-05: 7,498 → 5,634 (-1,864 lines, -25 %). Next targets per the plan: Merchant Cards + activation flows (~990 lines), SEO/iCal/Newsletter (~390 lines), Startup logic (~270 lines).
+
+## 2026-08-05 — Backend refactoring: extracted Merchants + Organizer Requests module (DONE)
+- **Goal**: Continue shrinking `server.py`. The merchant-card + organizer-request domain accounted for ~830 lines of tightly coupled admin/CRUD flow.
+- **What moved** — new file `/app/backend/routes/merchants.py` (974 lines) contains:
+  - Constants: `MERCHANT_CARD_DEFAULT_MONTHS`, `MAX_ORGANIZERS_PER_EVENT`.
+  - Helpers: `_merchant_until_iso(months)`.
+  - Models: `FeaturedToggle`, `MerchantCardRequestPayload`, `MerchantCardRequestDecision`, `EventOrganizerRequestPayload`, `ContactOrganizerPayload`, `AdminAddOrganizerPayload`.
+  - Scheduler jobs (module-level, exported): `merchant_card_expiry_sweep()`, `organizer_sync_job()`. Both use a module-scope `_DB` handle that's set when `create_merchants_router(db, …)` is called at wire time.
+  - Routes:
+    - Admin merchant-card management: `POST /admin/users/{user_id}/merchant-card/enable`, `.../disable`, `PATCH .../featured`, `GET /admin/merchant-cards`.
+    - Merchant card activation requests: `POST /merchant-card-requests`, `GET /merchant-card-requests/mine`, `GET /admin/merchant-card-requests[?status=]`, `POST /admin/merchant-card-requests/{id}/approve`, `.../reject`, `GET /admin/merchant-card-requests/pending-count`.
+    - Event organizer requests: `POST /events/{event_id}/organizer-requests`, `GET /events/{event_id}/organizer-requests/mine`, `GET /events/{event_id}/organizers`, `GET /admin/event-organizer-requests[?status=]`, `.../pending-count`, `POST .../{id}/approve`, `.../reject`, `POST /admin/event-organizer-requests/sync`, `POST /admin/event-organizers` (manual add), `DELETE /admin/events/{event_id}/organizers/{user_id}`.
+    - Public organizer contact: `POST /events/{event_id}/organizers/{user_id}/contact` (hides organizer email, sets Reply-To from visitor).
+- **Wiring** — `server.py` now:
+  - Imports `create_merchants_router`, `merchant_card_expiry_sweep`, `organizer_sync_job` from `routes.merchants`.
+  - Registers via `api_router.include_router(create_merchants_router(db, get_current_user, get_admin_or_moderator))` (which also stashes the `db` handle for the sweep jobs).
+  - APScheduler references the imported job functions directly instead of the previous module-local `_merchant_card_expiry_sweep` / `_organizer_sync_job`.
+- **Verification**:
+  - Full P1 pytest suite: **50/50 green in 60 s**.
+  - Smoke checks: `GET /admin/merchant-card-requests` 200, `.../pending-count` returns `{"pending":0}`, `GET /admin/merchant-cards` 200, `GET /admin/event-organizer-requests` 200, `GET /events/nonexistent/organizers` 404, unauth `GET /admin/merchant-cards` 401, unauth `GET /merchant-card-requests/mine` 401. Startup log confirms scheduler still binds the sweep jobs correctly ("merchant card expiry daily@03:30, organizer sync daily@03:45").
+- **Impact**: `server.py`: 5,634 → 4,806 lines (-828 lines, -15%). **Cumulative refactor since 2026-08-05: 7,498 → 4,806 (-2,692 lines, -36%).** Total `routes/*.py`: 2,988 lines split across articles/messaging/merchants.
