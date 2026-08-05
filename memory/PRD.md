@@ -1250,3 +1250,33 @@ See `/app/memory/test_credentials.md`.
   - Full P1 pytest suite: **50/50 green in 60 s**.
   - Smoke checks: `GET /admin/merchant-card-requests` 200, `.../pending-count` returns `{"pending":0}`, `GET /admin/merchant-cards` 200, `GET /admin/event-organizer-requests` 200, `GET /events/nonexistent/organizers` 404, unauth `GET /admin/merchant-cards` 401, unauth `GET /merchant-card-requests/mine` 401. Startup log confirms scheduler still binds the sweep jobs correctly ("merchant card expiry daily@03:30, organizer sync daily@03:45").
 - **Impact**: `server.py`: 5,634 → 4,806 lines (-828 lines, -15%). **Cumulative refactor since 2026-08-05: 7,498 → 4,806 (-2,692 lines, -36%).** Total `routes/*.py`: 2,988 lines split across articles/messaging/merchants.
+
+## 2026-08-05 — Backend refactoring: extracted public/SEO module (DONE)
+- **Goal**: Continue shrinking `server.py`. The public-facing SEO / iCal / newsletter / reminder / sitemap routes formed a natural cohesive cluster (~460 lines).
+- **What moved** — new file `/app/backend/routes/public.py` (568 lines) contains:
+  - Models: `SubscribeRequest`, `ReminderRequest`.
+  - SEO helpers: `_pick_localized_field(doc, base, lang)`, `_event_jsonld(event, canonical_url, og_image)`, constant `_BOT_REDIRECT_HTML_AFTER_S`.
+  - iCal helpers: `_ical_escape(s)`, `_to_ical_date(iso_date)`.
+  - Routes:
+    - `GET /api/prerender/events/{event_id}` — server-rendered HTML snapshot with OG/Twitter meta + schema.org/Event JSON-LD (XSS-safe: `<`/`>`/`&` escaped inside `<script>` tags).
+    - `GET /api/events.ics` — iCal feed of upcoming approved events.
+    - `POST /api/newsletter/subscribe`, `GET /api/newsletter/unsubscribe`.
+    - `POST /api/events/{event_id}/remind`, `GET /api/reminders/unsubscribe`.
+    - `GET /api/sitemap.xml` — multi-language sitemap with hreflang alternates for all 7 languages.
+- **Wiring** — `server.py` now:
+  - Imports `create_public_router` from `routes.public`.
+  - Registers via `api_router.include_router(create_public_router(db))` alongside the other routers.
+  - Prerender endpoint moved from `@app.get("/api/prerender/events/{event_id}")` to `@router.get("/prerender/events/{event_id}")` — since it lives on `api_router` which has prefix `/api`, the resulting URL is identical.
+  - Removed now-unused imports from `email_service`: `send_subscribe_confirmation`, `send_reminder_confirmation as svc_send_reminder_confirmation`, `make_unsubscribe_token` (all still used inside `routes/public.py`).
+- **Verification**:
+  - Full P1 pytest suite: **50/50 green in 62 s**.
+  - Smoke checks (all preserved):
+    - `GET /api/sitemap.xml` → 200 XML.
+    - `GET /api/events.ics` → 200 `text/calendar`.
+    - `GET /api/prerender/events/<real-id>` → 200 HTML with title, `<link rel="canonical">`, `<meta property="og:type" content="event">`, `<script type="application/ld+json">` with `"@type":"Event"`.
+    - `GET /api/prerender/events/nope` → 404.
+    - `POST /api/newsletter/subscribe` → `{"ok":true}`.
+    - `GET /api/newsletter/unsubscribe?token=bogus` → 303 redirect (as before).
+    - `POST /api/events/nope/remind` → 404.
+    - `GET /api/reminders/unsubscribe?token=bogus` → 303 redirect.
+- **Impact**: `server.py`: 4,806 → 4,341 lines (-465 lines, -10%). **Cumulative refactor since 2026-08-05: 7,498 → 4,341 (-3,157 lines, -42%).** Total `routes/*.py` now 3,556 lines split across 4 focused modules (articles / messaging / merchants / public).
