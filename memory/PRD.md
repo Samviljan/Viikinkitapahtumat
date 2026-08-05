@@ -1176,3 +1176,26 @@ See `/app/memory/test_credentials.md`.
 - Admin can now find "PWA-asennusohje" in Admin → Sisältö → Sähköpostipohjat and send via the newsletter broadcast panel.
 - Verified visually via Playwright — all 3 sections render correctly with proper spacing, gold-numbered steps, and photorealistic device screenshots.
 
+
+
+## 2026-08-05 — Backend refactoring: extracted Articles module from server.py (DONE)
+- **Goal**: Shrink the 7,498-line monolithic `server.py` for better maintainability, easier merges, and clearer module boundaries.
+- **What moved** — new file `/app/backend/routes/articles.py` (1,173 lines) contains:
+  - Pydantic models: `ArticleOut`, `ArticleAdminCreate`, `ArticleAdminUpdate`, `BetaFeedbackIn`.
+  - Public routes: `GET /api/articles`, `GET /api/articles/{slug}`, `GET /api/uploads/article-images/{filename}`, `POST /api/feedback/beta-app`.
+  - Admin routes: `POST/PATCH/DELETE /api/admin/articles`, `POST/DELETE /api/admin/articles/{slug}/images`, `POST /api/admin/articles/{slug}/translate`.
+  - Seed coroutines for all 4 auto-seeded articles (intro, beta-tester, PWA install guide, privacy/PWA explainer).
+  - Startup helper `init_articles(db)` that creates indexes, runs seeds, self-heals legacy GridFS image URLs, and schedules the background translation sweep.
+- **Wiring** — `server.py` now:
+  - Imports `create_articles_router` + `init_articles` from `routes.articles`.
+  - Registers routes via `api_router.include_router(create_articles_router(db, get_admin_user))` right before `app.include_router(api_router)`.
+  - Calls `await init_articles(db)` from the `on_startup` handler.
+- **Design choices**:
+  - Factory pattern (`create_articles_router(db, get_admin_user)`) so FastAPI's `Depends(get_admin_user)` DI resolves the real admin gate (which itself chains through `get_current_user`).
+  - `_article_images_bucket(db)` cached per-db handle in a module-level dict — avoids constructing multiple GridFS buckets across imports.
+  - No behavior changes: same URLs, response shapes, status codes, seed content, and startup ordering.
+- **Verification**:
+  - Full P1 pytest suite (50 tests): all green in 65 s.
+  - Article-specific tests (18 total in `test_p1_articles.py` + `test_p1_admin_articles_crud.py`): all green in 7.5 s.
+  - Smoke checks against preview URL: 4 seeded slugs returned, detail 200, 404 works, feedback 422 on empty, admin CRUD 401 without auth.
+- **Impact**: server.py: 7,498 → 6,431 lines (-1,067 lines, -14%). Total code base: same size, but split into two focused files. Next refactoring targets (per user roadmap): `seo.py` (bot prerender), `newsletter.py`, `seeds/`.
