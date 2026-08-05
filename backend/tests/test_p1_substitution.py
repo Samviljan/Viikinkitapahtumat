@@ -14,7 +14,7 @@ import pytest
 if "/app/backend" not in sys.path:
     sys.path.insert(0, "/app/backend")
 
-from server import substitute_event_vars, substitute_recipient_vars  # noqa: E402
+from routes.messaging import substitute_event_vars, substitute_recipient_vars  # noqa: E402
 
 
 @pytest.mark.p1

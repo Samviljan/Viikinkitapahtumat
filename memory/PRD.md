@@ -1199,3 +1199,33 @@ See `/app/memory/test_credentials.md`.
   - Article-specific tests (18 total in `test_p1_articles.py` + `test_p1_admin_articles_crud.py`): all green in 7.5 s.
   - Smoke checks against preview URL: 4 seeded slugs returned, detail 200, 404 works, feedback 422 on empty, admin CRUD 401 without auth.
 - **Impact**: server.py: 7,498 → 6,431 lines (-1,067 lines, -14%). Total code base: same size, but split into two focused files. Next refactoring targets (per user roadmap): `seo.py` (bot prerender), `newsletter.py`, `seeds/`.
+
+## 2026-08-05 — Backend refactoring: extracted Messaging module from server.py (DONE)
+- **Goal**: Continue shrinking `server.py`. Messaging is a large, cohesive domain (all `/api/messages/*` + push admin + quota + inbox helper) that was ~700 lines in the monolith.
+- **What moved** — new file `/app/backend/routes/messaging.py` (841 lines) contains:
+  - Models: `SendMessageRequest`, `MessagingQuotaConfig`, `MessagingQuotaUpdate`.
+  - Config: `QUOTA_PRESETS`, `DEFAULT_QUOTA_PRESET`, `DEFAULT_CUSTOM_QUOTA`.
+  - Helpers: `get_messaging_quota_config(db)`, `quota_value()`, `substitute_event_vars()`, `substitute_recipient_vars()`, `_localized_event_title()`, `_enrich_events_dict(db, event_ids)`, `record_inbox_rows(db, ...)`.
+  - Routes:
+    - `POST /api/messages/send` (largest handler, ~275 lines) — full send pipeline with consent filtering, quota check, organizer signature, per-recipient nickname substitution, push + email fanout, message_log audit, inbox row insertion.
+    - `GET /api/admin/messaging-quota`, `PATCH /api/admin/messaging-quota`.
+    - `GET /api/messages/quota/{event_id}`.
+    - `GET /api/messages/inbox`, `GET /api/messages/inbox/{event_id}`.
+    - `GET /api/messages/sent`, `GET /api/messages/sent/{event_id}`.
+    - `GET /api/messages/{message_id}` (auto-marks read for recipients).
+    - `DELETE /api/messages/{message_id}` (soft-delete, per-side flags).
+    - `GET /api/users/me/messageable-events`.
+    - `GET /api/admin/push/health`, `POST /api/admin/push/test`.
+- **Wiring** — `server.py` now:
+  - Imports `create_messaging_router`, `record_inbox_rows` from `routes.messaging`.
+  - Registers via `api_router.include_router(create_messaging_router(db, get_current_user, get_admin_or_moderator))`.
+  - Reminder job in `_run_daily_event_reminders` calls the exported `record_inbox_rows(db, ...)` instead of the previous private `_record_inbox_rows` helper (which lived in server.py).
+- **Test compatibility**:
+  - `tests/test_p1_substitution.py` updated: `from routes.messaging import substitute_event_vars, substitute_recipient_vars` (was `from server`).
+  - Full P1 pytest suite: **50/50 green in 63 s**. Article suite (18 tests) still green.
+  - Smoke checks: `/api/admin/messaging-quota` returns correct config, `/api/admin/push/health` reports expo token status, `/api/messages/inbox` and `/api/messages/sent` return 200 for admin, `/api/users/me/messageable-events` returns 14 events for admin, unauthenticated sends/quota return 401.
+- **Design choices**:
+  - Same factory pattern as `articles.py` — `create_messaging_router(db, get_current_user, get_admin_or_moderator)` — so FastAPI DI resolves the real auth deps.
+  - `record_inbox_rows` renamed from `_record_inbox_rows` (public) so the reminder writer in server.py can import + call it. It now takes `db` as first positional arg (removes the previous implicit module-level `db` reference).
+  - `get_messaging_quota_config` now takes `db` as arg (was reading module-level `db`).
+- **Impact**: `server.py`: 6,431 → 5,634 lines (-797 lines, -12 %). Cumulative refactor progress since 2026-08-05: 7,498 → 5,634 (-1,864 lines, -25 %). Next targets per the plan: Merchant Cards + activation flows (~990 lines), SEO/iCal/Newsletter (~390 lines), Startup logic (~270 lines).
