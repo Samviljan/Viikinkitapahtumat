@@ -1280,3 +1280,24 @@ See `/app/memory/test_credentials.md`.
     - `POST /api/events/nope/remind` → 404.
     - `GET /api/reminders/unsubscribe?token=bogus` → 303 redirect.
 - **Impact**: `server.py`: 4,806 → 4,341 lines (-465 lines, -10%). **Cumulative refactor since 2026-08-05: 7,498 → 4,341 (-3,157 lines, -42%).** Total `routes/*.py` now 3,556 lines split across 4 focused modules (articles / messaging / merchants / public).
+
+## 2026-08-06 — Backend refactoring: extracted bootstrap.py (DONE)
+- **Goal**: Take the ~230-line startup+shutdown block (indexes, seeds, admin user, scheduler wiring) out of `server.py` into a dedicated `bootstrap.py` module. Cleans up the tail of `server.py` and moves all boot-time side effects behind a single entry point.
+- **What moved** — new file `/app/backend/bootstrap.py` (357 lines) contains:
+  - `_create_core_indexes(db)` — all Mongo indexes (users, events, subscribers, reminders, user_messages, merchant_card_requests, event_organizer_requests, email_templates).
+  - `_seed_email_templates(db)` — idempotent template seed (guarded by `name` match).
+  - `_seed_admin_user(db, hash_password, verify_password)` — inserts or resets the admin user based on env vars (skips silently if `ADMIN_PASSWORD` is unset).
+  - `_seed_taxonomy_if_empty(db)` — first-boot merchants/guilds seed.
+  - 5 scheduled job factories (`_wrap_scheduled_monthly_digest`, `_wrap_scheduled_weekly_admin_report`, `_wrap_scheduled_event_reminders`, `_wrap_scheduled_prod_events_sync`, `_wrap_scheduled_translation_sweep`) each producing a fresh `async` closure over `db`.
+  - `_build_scheduler(db, run_daily_event_reminders)` — constructs `AsyncIOScheduler` with all 7 jobs (monthly digest, weekly admin report, daily event reminders, daily RSVP reminders, translation sweep every 6h, twice-daily prod → preview sync, merchant card expiry, organizer sync).
+  - Public entry points: `run_startup(db, *, hash_password, verify_password, run_daily_event_reminders)` → returns the running scheduler; `run_shutdown(client, scheduler)` → stops scheduler + closes Mongo client.
+- **Wiring** — `server.py` now:
+  - Removes `apscheduler` + `pytz` imports (no longer needed at top level).
+  - Removes now-unused `send_event_reminders as svc_send_event_reminders` from `email_service` (that alias was only referenced by the scheduler wrapper that moved).
+  - Replaces the ~230-line `on_startup` + `shutdown_db_client` block with a compact 17-line stub that just calls `run_startup(...)` and `run_shutdown(...)`.
+  - Keeps `_run_daily_event_reminders` in server.py (it depends on the local `record_inbox_rows`, push helpers, event logic that hasn't been extracted) and passes it as a callable into `run_startup`.
+- **Verification**:
+  - Full P1 pytest suite: **50/50 green in 67 s**.
+  - Startup log now emits `bootstrap - INFO - APScheduler started …` (previously `server - INFO`). All 7 scheduled jobs registered with unchanged schedule.
+  - Smoke checks: `/api/health` returns `{"status":"ok"}`, `/api/articles` returns the 4 seeded articles (proves `init_articles` still runs), admin login works (proves admin seed still works), `/api/sitemap.xml` 200, `/api/events` returns 8 approved events.
+- **Impact**: `server.py`: 4,341 → 4,118 lines (-223 lines, -5%). **Cumulative refactor since 2026-08-05: 7,498 → 4,118 (-3,380 lines, -45%).** Total `routes/*.py` + `bootstrap.py` = 3,920 lines split across 5 focused files.
